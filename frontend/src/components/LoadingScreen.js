@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
+import loadingAnimation from '../assets/loading-animation.gif';
 
 const quotes = [
   "Debugging is like being the detective in a crime movie where you're also the murderer.",
@@ -49,14 +50,22 @@ const Title = styled.h1`
   text-shadow: 0 0 10px #f5b70a;
 `;
 
-const Quote = styled.div`
+const QuoteContainer = styled.div`
   font-size: 1.2rem;
   max-width: 800px;
+  height: 120px; /* Fixed height to prevent layout shifts */
   margin: 2rem auto;
   padding: 1rem;
   border-radius: 10px;
   background-color: rgba(0, 0, 0, 0.5);
-  animation: ${props => props.fadeIn ? fadeIn : fadeOut} 1s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const QuoteText = styled.div`
+  opacity: ${props => props.visible ? 1 : 0};
+  transition: opacity 0.5s ease-in-out;
 `;
 
 const ProgressBarContainer = styled.div`
@@ -84,53 +93,82 @@ const LoadingText = styled.div`
   margin-top: 1rem;
 `;
 
-const PixelArt = styled.div`
-  font-size: 1.5rem;
-  line-height: 1;
+const AnimatedDots = styled.span`
+  display: inline-block;
+  width: 30px;
+  text-align: left;
+`;
+
+const LoadingAnimation = styled.div`
   margin: 2rem 0;
-  color: #f5b70a;
-  white-space: pre;
+  img {
+    width: auto;
+    height: 150px;
+    border-radius: 10px;
+  }
 `;
 
 const LoadingScreen = ({ progress = 0 }) => {
-  const [quoteIndex, setQuoteIndex] = useState(0);
-  const [fadeIn, setFadeIn] = useState(true);
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(Math.floor(Math.random() * quotes.length));
+  const [currentQuoteVisible, setCurrentQuoteVisible] = useState(true);
+  const [dots, setDots] = useState('.');
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setFadeIn(false);
+    // Quote rotation effect with randomization
+    const quoteInterval = setInterval(() => {
+      // Start fade out of current quote
+      setCurrentQuoteVisible(false);
+      
+      // After current quote fades out, show next quote
       setTimeout(() => {
-        setQuoteIndex((prevIndex) => (prevIndex + 1) % quotes.length);
-        setFadeIn(true);
-      }, 1000);
-    }, 5000);
+        // Select a random quote that's different from the current one
+        let newIndex;
+        do {
+          newIndex = Math.floor(Math.random() * quotes.length);
+        } while (newIndex === currentQuoteIndex && quotes.length > 1);
+        
+        setCurrentQuoteIndex(newIndex);
+        setCurrentQuoteVisible(true);
+      }, 500);
+    }, 5000); // Change quote every 5 seconds
 
-    return () => clearInterval(interval);
-  }, []);
+    // Animated dots effect
+    const dotsInterval = setInterval(() => {
+      setDots(prevDots => {
+        if (prevDots === '.') return '..';
+        if (prevDots === '..') return '...';
+        return '.';
+      });
+    }, 500);
 
-  const pixelArtCharacter = `
-    .---.
-   /     \\
-  |       |
-  |  (o)(o)
-  C   .---_)
-   | |.___|
-   |  \\__/
-   /_____\\
-  /_____/ \\
- /         \\
-  `;
+    return () => {
+      clearInterval(quoteInterval);
+      clearInterval(dotsInterval);
+    };
+  }, [currentQuoteIndex]);
 
   return (
     <Container>
       <Title>Code Quest Adventure</Title>
-      <PixelArt>{pixelArtCharacter}</PixelArt>
-      <Quote fadeIn={fadeIn}>{quotes[quoteIndex]}</Quote>
+      <LoadingAnimation>
+        <img src={loadingAnimation} alt="Loading Animation" />
+      </LoadingAnimation>
+      <QuoteContainer>
+        <QuoteText visible={currentQuoteVisible}>
+          {quotes[currentQuoteIndex]}
+        </QuoteText>
+      </QuoteContainer>
       <ProgressBarContainer>
         <ProgressBarFill progress={progress} />
       </ProgressBarContainer>
       <LoadingText>
-        {progress < 100 ? 'Generating your adventure...' : 'Adventure ready!'}
+        {progress < 100 ? (
+          <>
+            Generating your adventure<AnimatedDots>{dots}</AnimatedDots>
+          </>
+        ) : (
+          'Adventure ready!'
+        )}
       </LoadingText>
     </Container>
   );

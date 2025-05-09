@@ -59,8 +59,6 @@ def get_story():
     {{
         "title": "Level {level} title",
         "story": "Story text here (keep under 70 words)",
-        "setting": "Brief description of the setting (under 30 words)",
-        "character": "Brief description of the character or enemy (under 30 words)",
         "objective": "What the player needs to accomplish (under 30 words)"
     }}
     """
@@ -84,10 +82,6 @@ def get_story():
             # Additional length checks on individual fields
             if "story" in parsed_content and len(parsed_content["story"]) > 800:
                 parsed_content["story"] = parsed_content["story"][:800] + "..."
-            if "setting" in parsed_content and len(parsed_content["setting"]) > 250:
-                parsed_content["setting"] = parsed_content["setting"][:250] + "..."
-            if "character" in parsed_content and len(parsed_content["character"]) > 250:
-                parsed_content["character"] = parsed_content["character"][:250] + "..."
             if "objective" in parsed_content and len(parsed_content["objective"]) > 250:
                 parsed_content["objective"] = parsed_content["objective"][:250] + "..."
                 

@@ -36,7 +36,6 @@ const StoryContainer = styled.div`
   border-radius: 10px;
   margin: 10px;
   overflow-y: auto;
-  font-family: 'Roboto', sans-serif;
 `;
 
 const StoryTitle = styled.h2`
@@ -49,6 +48,15 @@ const StoryText = styled.p`
   font-size: 16px;
   line-height: 1.6;
   margin-bottom: 15px;
+  font-family: 'Courier New', monospace;
+  color:rgb(236, 236, 236);
+`;
+
+const StoryLabel = styled.span`
+  font-weight: bold;
+  color: #f5b70a;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 14px;
 `;
 
 const ChallengeContainer = styled.div`
@@ -75,6 +83,8 @@ const ChallengeQuestion = styled.div`
   padding: 15px;
   border-radius: 5px;
   border-left: 4px solid #f5b70a;
+  font-family: 'Courier New', monospace;
+  color: #e0e0e0;
 `;
 
 const AnswerContainer = styled.div`
@@ -86,7 +96,7 @@ const CodeEditor = styled.textarea`
   height: 150px;
   background-color: #1e1e3f;
   color: #fff;
-  font-family: monospace;
+  font-family: 'Courier New', monospace;
   padding: 10px;
   border: 1px solid #333;
   border-radius: 5px;
@@ -101,7 +111,7 @@ const OptionButton = styled.button`
   padding: 10px 15px;
   margin: 5px;
   cursor: pointer;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Courier New', monospace;
   transition: all 0.3s;
   
   &:hover {
@@ -115,6 +125,12 @@ const OptionButton = styled.button`
   `}
 `;
 
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+`;
+
 const SubmitButton = styled.button`
   background-color: #4caf50;
   color: white;
@@ -124,7 +140,6 @@ const SubmitButton = styled.button`
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-  margin: 10px 0;
   cursor: pointer;
   border-radius: 5px;
   font-family: 'Press Start 2P', cursive;
@@ -146,21 +161,30 @@ const FeedbackContainer = styled.div`
   border-radius: 5px;
   background-color: ${props => props.isCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
   border-left: 4px solid ${props => props.isCorrect ? '#4caf50' : '#f44336'};
+  font-family: 'Courier New', monospace;
 `;
 
 const HintButton = styled.button`
   background-color: #2196f3;
   color: white;
   border: none;
-  padding: 5px 10px;
+  padding: 10px 20px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
   font-size: 14px;
-  margin: 10px 0;
   cursor: pointer;
   border-radius: 5px;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Press Start 2P', cursive;
+`;
+
+const HintContent = styled.div`
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #2c2c54;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  color: #e0e0e0;
 `;
 
 const ErrorMessage = styled.div`
@@ -169,69 +193,76 @@ const ErrorMessage = styled.div`
   background-color: rgba(244, 67, 54, 0.3);
   border-left: 4px solid #f44336;
   border-radius: 5px;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Courier New', monospace;
 `;
 
-const GameScreen = ({ story, level = 1, language = 'python' }) => {
-  const [challenge, setChallenge] = useState(null);
-  const [loading, setLoading] = useState(true);
+const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'python', initialError = null }) => {
+  const [challenge, setChallenge] = useState(initialChallenge || null);
+  const [loading, setLoading] = useState(!initialChallenge);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [selectedOption, setSelectedOption] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [showHint, setShowHint] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(initialError || null);
   const gameCanvasRef = useRef(null);
   const gameEngineRef = useRef(null);
 
   useEffect(() => {
-    // Simulate loading progress
-    const interval = setInterval(() => {
-      setLoadingProgress(prev => {
-        const newProgress = prev + Math.random() * 10;
-        return newProgress >= 100 ? 100 : newProgress;
-      });
-    }, 300);
+    // If we already have a challenge from props, just initialize the game engine
+    if (initialChallenge) {
+      // Initialize game engine after component is fully rendered
+      setTimeout(() => {
+        if (gameCanvasRef.current) {
+          gameEngineRef.current = new GameEngine('game-canvas', () => {
+            console.log('Game engine initialized');
+          });
+          gameEngineRef.current.init();
+        }
+      }, 100);
+      return;
+    }
 
-    // Fetch challenge data
+    // Only fetch challenge if not provided in props
     const fetchChallenge = async () => {
+      setLoadingProgress(0);
       try {
+        setLoadingProgress(30);
         const data = await getChallenge(level, language);
         setChallenge(data);
+        setLoadingProgress(80);
         
         // Initialize game engine after challenge is loaded
         setTimeout(() => {
           setLoading(false);
-          clearInterval(interval);
+          setLoadingProgress(100);
           
           // Initialize game engine after component is fully rendered
-          setTimeout(() => {
-            if (gameCanvasRef.current) {
-              gameEngineRef.current = new GameEngine('game-canvas', () => {
-                console.log('Game engine initialized');
-              });
-              gameEngineRef.current.init();
-            }
-          }, 100);
-        }, 2000);
+          if (gameCanvasRef.current) {
+            gameEngineRef.current = new GameEngine('game-canvas', () => {
+              console.log('Game engine initialized');
+            });
+            gameEngineRef.current.init();
+          }
+        }, 500);
       } catch (error) {
         console.error('Error fetching challenge:', error);
         setError('Failed to load challenge data. Please try again.');
         setLoading(false);
-        clearInterval(interval);
       }
     };
 
-    fetchChallenge();
+    if (!initialChallenge) {
+      fetchChallenge();
+    }
 
     return () => {
-      clearInterval(interval);
       // Clean up game engine if needed
       if (gameEngineRef.current && gameEngineRef.current.game) {
         gameEngineRef.current.game.destroy(true);
       }
     };
-  }, [level, language]);
+  }, [level, language, initialChallenge]);
 
   const handleAnswerChange = (e) => {
     setUserAnswer(e.target.value);
@@ -241,43 +272,48 @@ const GameScreen = ({ story, level = 1, language = 'python' }) => {
     setSelectedOption(option);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!challenge) return;
     
-    try {
-      const answer = challenge.type === 'multiple-choice' ? selectedOption : userAnswer;
-      const result = await submitAnswer(answer, challenge.answer, challenge.question);
-      setFeedback(result);
+    // Get the user's answer
+    const answer = challenge.type === 'multiple-choice' ? selectedOption : userAnswer;
+    
+    // Simple client-side validation
+    const isCorrect = answer === challenge.answer;
+    
+    // Create feedback object
+    const result = {
+      is_correct: isCorrect,
+      feedback: isCorrect 
+        ? "Correct! Great job!" 
+        : `Incorrect. The correct answer is: ${challenge.answer}`,
+      next_hint: !isCorrect ? challenge.hint : null
+    };
+    
+    setFeedback(result);
+    
+    // Update game state based on answer correctness
+    if (result.is_correct) {
+      // Player attacks enemy
+      const enemyDefeated = gameEngineRef.current.playerAttack(30);
       
-      // Update game state based on answer correctness
-      if (result.is_correct) {
-        // Player attacks enemy
-        const enemyDefeated = gameEngineRef.current.playerAttack(30);
-        
-        // Add XP points
-        gameEngineRef.current.addXP(challenge.xp_reward || 20);
-        
-        if (enemyDefeated) {
-          // Reset enemy for next challenge
-          setTimeout(() => {
-            gameEngineRef.current.resetEnemy();
-          }, 2000);
-        }
-      } else {
-        // Enemy attacks player
-        const playerDefeated = gameEngineRef.current.enemyAttack(15);
-        
-        if (playerDefeated) {
-          // Game over
-          gameEngineRef.current.gameOver();
-        }
+      // Add XP points
+      gameEngineRef.current.addXP(challenge.xp_reward || 20);
+      
+      if (enemyDefeated) {
+        // Reset enemy for next challenge
+        setTimeout(() => {
+          gameEngineRef.current.resetEnemy();
+        }, 2000);
       }
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-      setFeedback({
-        is_correct: false,
-        feedback: 'An error occurred while checking your answer. Please try again.'
-      });
+    } else {
+      // Enemy attacks player
+      const playerDefeated = gameEngineRef.current.enemyAttack(15);
+      
+      if (playerDefeated) {
+        // Game over
+        gameEngineRef.current.gameOver();
+      }
     }
   };
 
@@ -301,19 +337,8 @@ const GameScreen = ({ story, level = 1, language = 'python' }) => {
     );
   }
 
-  // If challenge is still null after loading, show a default challenge
+  // If challenge is still null after loading, continue showing loading screen
   if (!challenge) {
-    const defaultChallenge = {
-      question: "What does the print function do in Python?",
-      type: "multiple-choice",
-      options: ["Displays output to the console", "Prints to a printer", "Creates a file", "None of the above"],
-      answer: "Displays output to the console",
-      hint: "Think about how you see output from your code",
-      explanation: "The print function in Python displays output to the console or terminal",
-      difficulty: "easy",
-      xp_reward: 10
-    };
-    setChallenge(defaultChallenge);
     return <LoadingScreen progress={95} />;
   }
 
@@ -325,9 +350,9 @@ const GameScreen = ({ story, level = 1, language = 'python' }) => {
           <StoryContainer>
             <StoryTitle>{story?.title || "Adventure Begins"}</StoryTitle>
             <StoryText>{story?.story || "Your coding adventure is about to begin..."}</StoryText>
-            <StoryText><strong>Setting:</strong> {story?.setting || "A digital realm"}</StoryText>
-            <StoryText><strong>Character:</strong> {story?.character || "A brave coder"}</StoryText>
-            <StoryText><strong>Objective:</strong> {story?.objective || "Solve coding challenges to advance"}</StoryText>
+            <StoryText>
+              <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
+            </StoryText>
           </StoryContainer>
         </GameArea>
         
@@ -362,21 +387,23 @@ const GameScreen = ({ story, level = 1, language = 'python' }) => {
               />
             )}
             
-            <SubmitButton 
-              onClick={handleSubmit}
-              disabled={challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer}
-            >
-              Submit Answer
-            </SubmitButton>
-            
-            <HintButton onClick={toggleHint}>
-              {showHint ? 'Hide Hint' : 'Show Hint'}
-            </HintButton>
+            <ButtonContainer>
+              <HintButton onClick={toggleHint}>
+                {showHint ? 'Hide Hint' : 'Show Hint'}
+              </HintButton>
+              
+              <SubmitButton 
+                onClick={handleSubmit}
+                disabled={challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer}
+              >
+                Submit Answer
+              </SubmitButton>
+            </ButtonContainer>
             
             {showHint && challenge.hint && (
-              <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#2c2c54', borderRadius: '5px' }}>
+              <HintContent>
                 <p><strong>Hint:</strong> {challenge.hint}</p>
-              </div>
+              </HintContent>
             )}
             
             {feedback && (

@@ -85,6 +85,8 @@ const StoryContainer = styled.div`
   margin: 10px;
   overflow-y: auto;
   height: 100%; /* Take full height */
+  display: flex;
+  flex-direction: column;
 `;
 
 const StoryTitle = styled.h2`
@@ -223,16 +225,36 @@ const SubmitButton = styled.button`
 const FeedbackContainer = styled.div`
   margin-top: 15px;
   margin-bottom: 15px;
-  padding: 10px;
-  border-radius: 5px;
-  background-color: ${props => props.isCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
+  padding: 20px;
+  border-radius: 12px;
+  background-color: ${props => props.isCorrect ? 'rgba(76, 175, 80, 0.65)' : 'rgba(244, 67, 54, 0.65)'};
   border-left: 4px solid ${props => props.isCorrect ? '#4caf50' : '#f44336'};
   font-family: 'Courier New', monospace;
   position: absolute;
-  top: ${props => props.position === 'top' ? '70px' : 'auto'};
-  left: 0;
-  right: 0;
-  z-index: 10;
+  top: 150px;
+  left: 50%;
+  transform: translate(-50%, ${props => props.visible ? '0' : '-200%'});
+  z-index: 100;
+  width: 80%;
+  max-width: 500px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  color: white;
+  text-align: center;
+  opacity: ${props => props.visible ? '1' : '0'};
+  transition: transform 0.9s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.8s ease-in-out;
+  backdrop-filter: blur(3px);
+  
+  p {
+    font-size: 18px;
+    margin: 8px 0;
+  }
+  
+  strong {
+    font-size: 22px;
+    display: block;
+    margin-bottom: 10px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -280,14 +302,20 @@ const HintButton = styled.button`
 `;
 
 const HintContent = styled.div`
-  margin-top: 10px;
+  margin-top: 20px;
   margin-bottom: 15px;
   padding: 10px;
   background-color: #2c2c54;
   border-radius: 5px;
   font-family: 'Courier New', monospace;
-  color:rgb(237, 237, 237);
+  color: rgb(237, 237, 237);
   border-left: 4px solid #f5b70a;
+  transform: translateX(${props => props.visible ? '0' : '100%'});
+  opacity: ${props => props.visible ? '1' : '0'};
+  transition: transform 0.5s ease-out, opacity 0.4s ease-in-out;
+  position: relative;
+  bottom: 0;
+  margin-top: auto;
 `;
 
 const ErrorMessage = styled.div`
@@ -563,10 +591,10 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       loadNextChallenge();
     }
     
-    // After 2 seconds, move to the next challenge
+    // After 4 seconds (changed from 2 seconds), move to the next challenge
     setTimeout(() => {
       moveToNextChallenge();
-    }, 2000);
+    }, 4000);
   };
 
   const toggleHint = () => {
@@ -679,6 +707,15 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       <GameContainer>
         <GameArea>
           <GameCanvas id="game-canvas" ref={gameCanvasRef} />
+          
+          {/* Feedback popup that appears in front of game engine */}
+          {feedback && (
+            <FeedbackContainer isCorrect={feedback.is_correct} visible={feedback !== null}>
+              <strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong>
+              <p>{feedback.feedback}</p>
+            </FeedbackContainer>
+          )}
+          
           <ContentContainer>
             <StoryContainer>
               <StoryTitle>{story?.title || "Adventure Begins"}</StoryTitle>
@@ -686,21 +723,28 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
               <StoryText>
                 <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
               </StoryText>
+              
+              {/* Spacer to push hints to the bottom */}
+              <div style={{ flex: 1 }}></div>
+              
+              {/* Hint moved to story container with animation - now at bottom and slides from right */}
+              {challenge && challenge.hint && (
+                <HintContent visible={showHint}>
+                  <p><strong>Hint:</strong> {challenge.hint}</p>
+                </HintContent>
+              )}
+              
+              {/* Show hint from feedback here instead of in the popup */}
+              {feedback && !feedback.is_correct && feedback.next_hint && showHint && (
+                <HintContent visible={true}>
+                  <p><strong>Additional Hint:</strong> {feedback.next_hint}</p>
+                </HintContent>
+              )}
             </StoryContainer>
 
             <ChallengeContainer>
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
-              
-              {feedback && (
-                <FeedbackContainer isCorrect={feedback.is_correct} position="top">
-                  <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
-                  <p>{feedback.feedback}</p>
-                  {!feedback.is_correct && feedback.next_hint && (
-                    <p><strong>Hint:</strong> {feedback.next_hint}</p>
-                  )}
-                </FeedbackContainer>
-              )}
 
               <AnswerContainer>
                 {nextChallengeLoading ? (
@@ -740,12 +784,6 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
                         Submit Answer
                       </SubmitButton>
                     </ButtonContainer>
-
-                    {showHint && challenge.hint && (
-                      <HintContent>
-                        <p><strong>Hint:</strong> {challenge.hint}</p>
-                      </HintContent>
-                    )}
                   </>
                 )}
               </AnswerContainer>

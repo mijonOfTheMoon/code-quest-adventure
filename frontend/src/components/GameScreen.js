@@ -585,25 +585,16 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     // Update game state based on answer correctness
     if (result.is_correct) {
       // Player attacks enemy
-      const enemyDefeated = gameEngineRef.current.playerAttack(30);
-
+      const enemyDefeated = gameEngineRef.current.playerAttack();
+      
       // Add XP points
       gameEngineRef.current.addXP(challenge.xp_reward || 20);
-
-      if (enemyDefeated) {
-        // Reset enemy for next challenge
-        setTimeout(() => {
-          gameEngineRef.current.resetEnemy();
-        }, 2000);
-      }
     } else {
       // Enemy attacks player
-      const playerDefeated = gameEngineRef.current.enemyAttack(15);
-
-      if (playerDefeated) {
-        // Game over
-        gameEngineRef.current.gameOver();
-      }
+      const playerDefeated = gameEngineRef.current.enemyAttack();
+      
+      // If player is defeated, we don't need to do anything here
+      // as the game engine will handle showing the game over popup
     }
     
     // Start loading the next challenge if we don't have one yet
@@ -618,7 +609,11 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       
       // Wait for fade out animation to complete before moving to next challenge
       setTimeout(() => {
-        moveToNextChallenge();
+        // Only move to next challenge if enemy or player isn't defeated
+        // (those cases are handled by the game engine popups)
+        if (gameEngineRef.current.enemyHealth > 1 && gameEngineRef.current.playerHealth > 1) {
+          moveToNextChallenge();
+        }
       }, 500);
     }, 4000);
   };

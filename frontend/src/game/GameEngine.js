@@ -583,51 +583,168 @@ export default class GameEngine {
         hitEffect.destroy();
       });
 
-      // Return to idle state after delay
-      setTimeout(() => {
-        this.player.anims.play('hero_idle', true);
-        this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
-        this.attackAnimationPlaying = false;
-      }, 1200); // Longer delay
-    }, 300); // Delay before effect appears
-
-    // Check if enemy is defeated
-    const enemyDefeated = this.enemyHealth <= 0;
-    
-    // If enemy is defeated, increment counter
-    if (enemyDefeated) {
-      this.enemiesDefeated++;
+      // Check if enemy is defeated (health <= 1)
+      const enemyDefeated = this.enemyHealth <= 1;
       
-      // Add XP for defeating enemy
-      this.addXP(playerConfig.xpPerCorrectAnswer);
-      
-      // Check if player should level up based on enemies defeated
-      if (this.enemiesDefeated >= gameProgressionConfig.enemiesToDefeat[this.currentLevel]) {
-        // Only level up if not at max level
-        if (this.currentLevel < 4) {
-          this.currentLevel++;
-          this.enemiesDefeated = 0;
+      if (enemyDefeated) {
+        // Keep enemy in hit state animation
+        // Don't return to idle state
+        this.attackAnimationPlaying = true;
+        
+        // Create congratulations popup
+        const gameWidth = this.game.config.width;
+        const gameHeight = this.game.config.height;
+        
+        // Create a container for the popup
+        const popupContainer = this.gameScene.add.container(gameWidth / 2, gameHeight / 2);
+        
+        // Add background
+        const popupBg = this.gameScene.add.graphics();
+        popupBg.fillStyle(0x000000, 0.8);
+        popupBg.fillRoundedRect(-200, -125, 400, 250, 20);
+        popupContainer.add(popupBg);
+        
+        // Add congratulations text
+        let congratsText;
+        if (this.currentLevel === 4) {
+          // Final boss defeated
+          congratsText = this.gameScene.add.text(0, -80, 'VICTORY!', {
+            fontSize: '32px',
+            fill: '#f5b70a',
+            fontFamily: '"Press Start 2P", cursive',
+            stroke: '#000',
+            strokeThickness: 6
+          }).setOrigin(0.5);
           
-          // Update player health for new level
-          this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
-          this.playerHealth = this.playerMaxHealth;
+          const subText = this.gameScene.add.text(0, -30, 'You defeated the final boss!', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: '"Press Start 2P", cursive',
+            stroke: '#000',
+            strokeThickness: 3
+          }).setOrigin(0.5);
           
-          // Create new enemy for next level
-          setTimeout(() => {
-            this.createEnemy();
-            this.createHealthBars();
-          }, gameProgressionConfig.levelUpDelay);
+          popupContainer.add(subText);
+          
+          // Add return to main screen button
+          const returnButton = this.gameScene.add.text(0, 50, 'RETURN TO MAIN SCREEN', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            backgroundColor: '#4caf50',
+            padding: { x: 20, y: 10 },
+            fontFamily: '"Press Start 2P", cursive'
+          }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          
+          returnButton.on('pointerdown', () => {
+            // Redirect to main screen
+            window.location.reload();
+          });
+          
+          popupContainer.add(returnButton);
+        } else {
+          // Regular enemy defeated
+          congratsText = this.gameScene.add.text(0, -80, 'ENEMY DEFEATED!', {
+            fontSize: '24px',
+            fill: '#f5b70a',
+            fontFamily: '"Press Start 2P", cursive',
+            stroke: '#000',
+            strokeThickness: 6
+          }).setOrigin(0.5);
+          
+          const subText = this.gameScene.add.text(0, -30, 'Proceed to next level?', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: '"Press Start 2P", cursive',
+            stroke: '#000',
+            strokeThickness: 3
+          }).setOrigin(0.5);
+          
+          popupContainer.add(subText);
+          
+          // Add next level button
+          const nextButton = this.gameScene.add.text(0, 50, 'NEXT LEVEL', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            backgroundColor: '#4caf50',
+            padding: { x: 20, y: 10 },
+            fontFamily: '"Press Start 2P", cursive'
+          }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          
+          nextButton.on('pointerdown', () => {
+            // Hide popup
+            popupContainer.setVisible(false);
+            
+            // Show loading screen
+            const loadingContainer = this.gameScene.add.container(gameWidth / 2, gameHeight / 2);
+            
+            const loadingBg = this.gameScene.add.graphics();
+            loadingBg.fillStyle(0x000000, 0.9);
+            loadingBg.fillRect(-gameWidth/2, -gameHeight/2, gameWidth, gameHeight);
+            loadingContainer.add(loadingBg);
+            
+            const loadingText = this.gameScene.add.text(0, 0, 'LOADING NEXT LEVEL...', {
+              fontSize: '24px',
+              fill: '#f5b70a',
+              fontFamily: '"Press Start 2P", cursive'
+            }).setOrigin(0.5);
+            loadingContainer.add(loadingText);
+            
+            // Increment level
+            this.currentLevel = Math.min(4, this.currentLevel + 1);
+            
+            // Update player health for new level
+            this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
+            this.playerHealth = this.playerMaxHealth;
+            
+            // Create new enemy for next level after short delay
+            setTimeout(() => {
+              // Remove loading screen
+              loadingContainer.destroy();
+              
+              // Create new enemy
+              this.createEnemy();
+              this.createHealthBars();
+              
+              // Reset animation state
+              this.attackAnimationPlaying = false;
+              this.player.anims.play('hero_idle', true);
+              this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+            }, 1500);
+          });
+          
+          popupContainer.add(nextButton);
         }
+        
+        popupContainer.add(congratsText);
+        
+        // Add XP display
+        const xpText = this.gameScene.add.text(0, 0, `XP: ${this.xpPoints}`, {
+          fontSize: '18px',
+          fill: '#66ccff',
+          fontFamily: '"Press Start 2P", cursive'
+        }).setOrigin(0.5);
+        popupContainer.add(xpText);
+        
+        // Scale in animation for popup
+        popupContainer.setScale(0.5);
+        this.gameScene.tweens.add({
+          targets: popupContainer,
+          scale: 1,
+          duration: 300,
+          ease: 'Back.easeOut'
+        });
       } else {
-        // Create new enemy of same level
+        // Return to idle state after delay if enemy not defeated
         setTimeout(() => {
-          this.createEnemy();
-          this.createHealthBars();
-        }, gameProgressionConfig.enemyDefeatDelay);
+          this.player.anims.play('hero_idle', true);
+          this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+          this.attackAnimationPlaying = false;
+        }, 1200); // Longer delay
       }
-    }
+    }, 300); // Delay before effect appears
     
-    return enemyDefeated;
+    // Return if enemy is defeated
+    return this.enemyHealth <= 1;
   }
 
   enemyAttack() {
@@ -701,16 +818,81 @@ export default class GameEngine {
         hitEffect.destroy();
       });
 
-      // Return to idle state after delay
-      setTimeout(() => {
-        this.player.anims.play('hero_idle', true);
-        this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
-        this.attackAnimationPlaying = false;
-      }, 1200); // Longer delay
+      // Check if player is defeated
+      const playerDefeated = this.playerHealth <= 1;
+      
+      if (playerDefeated) {
+        // Keep player in hit state animation
+        // Don't return to idle state
+        this.attackAnimationPlaying = true;
+        
+        // Create game over popup
+        const gameWidth = this.game.config.width;
+        const gameHeight = this.game.config.height;
+        
+        // Create a container for the popup
+        const popupContainer = this.gameScene.add.container(gameWidth / 2, gameHeight / 2);
+        
+        // Add background
+        const popupBg = this.gameScene.add.graphics();
+        popupBg.fillStyle(0x000000, 0.8);
+        popupBg.fillRoundedRect(-200, -125, 400, 250, 20);
+        popupContainer.add(popupBg);
+        
+        // Add game over text
+        const gameOverText = this.gameScene.add.text(0, -80, 'GAME OVER', {
+          fontSize: '32px',
+          fill: '#ff6666',
+          fontFamily: '"Press Start 2P", cursive',
+          stroke: '#000',
+          strokeThickness: 6
+        }).setOrigin(0.5);
+        popupContainer.add(gameOverText);
+        
+        // Add XP display
+        const xpText = this.gameScene.add.text(0, -20, `Final XP: ${this.xpPoints}`, {
+          fontSize: '18px',
+          fill: '#66ccff',
+          fontFamily: '"Press Start 2P", cursive'
+        }).setOrigin(0.5);
+        popupContainer.add(xpText);
+        
+        // Add return to main screen button
+        const returnButton = this.gameScene.add.text(0, 50, 'RETURN TO MAIN SCREEN', {
+          fontSize: '16px',
+          fill: '#ffffff',
+          backgroundColor: '#f44336',
+          padding: { x: 20, y: 10 },
+          fontFamily: '"Press Start 2P", cursive'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        
+        returnButton.on('pointerdown', () => {
+          // Redirect to main screen
+          window.location.reload();
+        });
+        
+        popupContainer.add(returnButton);
+        
+        // Scale in animation for popup
+        popupContainer.setScale(0.5);
+        this.gameScene.tweens.add({
+          targets: popupContainer,
+          scale: 1,
+          duration: 300,
+          ease: 'Back.easeOut'
+        });
+      } else {
+        // Return to idle state after delay if player not defeated
+        setTimeout(() => {
+          this.player.anims.play('hero_idle', true);
+          this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+          this.attackAnimationPlaying = false;
+        }, 1200); // Longer delay
+      }
     }, 300); // Delay before effect appears
-
-    // Check if player is defeated
-    return this.playerHealth <= 0;
+    
+    // Return if player is defeated
+    return this.playerHealth <= 1;
   }
 
   addXP(points) {
@@ -823,24 +1005,7 @@ export default class GameEngine {
   }
 
   gameOver() {
-    const gameWidth = this.game.config.width;
-    const gameHeight = this.game.config.height;
-
-    const gameOverText = this.gameScene.add.text(gameWidth / 2, gameHeight / 2, 'GAME OVER', {
-      fontSize: '48px',
-      fill: '#ff6666',
-      fontFamily: '"Press Start 2P", cursive',
-      stroke: '#000',
-      strokeThickness: 6
-    }).setOrigin(0.5);
-
-    // Animate game over text
-    this.gameScene.tweens.add({
-      targets: gameOverText,
-      scale: 1.2,
-      yoyo: true,
-      repeat: -1,
-      duration: 1500 // Slower animation
-    });
+    // This function is no longer needed as we handle game over in enemyAttack
+    // Keeping it empty to avoid errors if it's called elsewhere
   }
 }

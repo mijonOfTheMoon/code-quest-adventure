@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import GameEngine from '../game/GameEngine';
-import { getChallenge, submitAnswer } from '../services/api';
+import { getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges } from '../services/api';
 import LoadingScreen from './LoadingScreen';
 
 const Container = styled.div`
@@ -228,6 +228,41 @@ const FeedbackContainer = styled.div`
   background-color: ${props => props.isCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
   border-left: 4px solid ${props => props.isCorrect ? '#4caf50' : '#f44336'};
   font-family: 'Courier New', monospace;
+  position: absolute;
+  top: ${props => props.position === 'top' ? '70px' : 'auto'};
+  left: 0;
+  right: 0;
+  z-index: 10;
+`;
+
+const LoadingSpinner = styled.div`
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #f5b70a;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #f5b70a;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 14px;
+  
+  p {
+    margin-top: 15px;
+  }
 `;
 
 const HintButton = styled.button`
@@ -274,8 +309,11 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
   const [showHint, setShowHint] = useState(false);
   const [error, setError] = useState(initialError || null);
   const [blankAnswers, setBlankAnswers] = useState([]);
+  const [nextChallengeLoading, setNextChallengeLoading] = useState(false);
+  const [submitDisabled, setSubmitDisabled] = useState(false);
   const gameCanvasRef = useRef(null);
   const gameEngineRef = useRef(null);
+  const nextChallengeRef = useRef(null);
 
   useEffect(() => {
     // If we already have a challenge from props, just initialize the game engine
@@ -296,6 +334,9 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
         const blankCount = (initialChallenge.template.match(/_____/g) || []).length;
         setBlankAnswers(new Array(blankCount).fill(''));
       }
+      
+      // Start preloading challenges in the background
+      preloadChallenges(level, language, 8);
 
       return;
     }
@@ -329,6 +370,9 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
             });
             gameEngineRef.current.init();
           }
+          
+          // Start preloading challenges in the background
+          preloadChallenges(level, language, 8);
         }, 500);
       } catch (error) {
         console.error('Error fetching challenge:', error);
@@ -366,8 +410,75 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     setSelectedOption(option);
   };
 
+  const loadNextChallenge = async () => {
+    setNextChallengeLoading(true);
+    try {
+      const nextChallenge = await getChallenge(level, language);
+      nextChallengeRef.current = nextChallenge;
+      
+      // Trigger another background preload if cache is getting low
+      if (getCachedChallengeCount() < 3 && !isPreloadingChallenges()) {
+        preloadChallenges(level, language, 5);
+      }
+    } catch (error) {
+      console.error('Error loading next challenge:', error);
+    } finally {
+      setNextChallengeLoading(false);
+    }
+  };
+
+  const moveToNextChallenge = () => {
+    // Reset state for new challenge
+    setFeedback(null);
+    setUserAnswer('');
+    setSelectedOption(null);
+    setShowHint(false);
+    setSubmitDisabled(false);
+    
+    // If we have a preloaded challenge, use it
+    if (nextChallengeRef.current) {
+      const nextChallenge = nextChallengeRef.current;
+      setChallenge(nextChallenge);
+      nextChallengeRef.current = null;
+      
+      // Set template as initial value for fill-in-blank challenges
+      if (nextChallenge.type === 'fill-in-blank' && nextChallenge.template) {
+        // Initialize blank answers array based on number of blanks in template
+        const blankCount = (nextChallenge.template.match(/_____/g) || []).length;
+        setBlankAnswers(new Array(blankCount).fill(''));
+      }
+      
+      // Start loading the next challenge in the background
+      loadNextChallenge();
+    } else {
+      // If no preloaded challenge, show loading state and fetch one
+      setNextChallengeLoading(true);
+      getChallenge(level, language)
+        .then(data => {
+          setChallenge(data);
+          
+          // Set template as initial value for fill-in-blank challenges
+          if (data.type === 'fill-in-blank' && data.template) {
+            // Initialize blank answers array based on number of blanks in template
+            const blankCount = (data.template.match(/_____/g) || []).length;
+            setBlankAnswers(new Array(blankCount).fill(''));
+          }
+          
+          setNextChallengeLoading(false);
+          
+          // Continue preloading more challenges
+          loadNextChallenge();
+        })
+        .catch(error => {
+          console.error('Error fetching next challenge:', error);
+          setError('Failed to load next challenge. Please try again.');
+          setNextChallengeLoading(false);
+        });
+    }
+  };
+
   const handleSubmit = () => {
-    if (!challenge) return;
+    if (!challenge || submitDisabled) return;
 
     // Get the user's answer
     const answer = challenge.type === 'multiple-choice' ? selectedOption : userAnswer;
@@ -421,6 +532,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     };
 
     setFeedback(result);
+    setSubmitDisabled(true);
 
     // Update game state based on answer correctness
     if (result.is_correct) {
@@ -445,6 +557,16 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
         gameEngineRef.current.gameOver();
       }
     }
+    
+    // Start loading the next challenge if we don't have one yet
+    if (!nextChallengeRef.current && !isPreloadingChallenges()) {
+      loadNextChallenge();
+    }
+    
+    // After 2 seconds, move to the next challenge
+    setTimeout(() => {
+      moveToNextChallenge();
+    }, 2000);
   };
 
   const toggleHint = () => {
@@ -569,52 +691,62 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
             <ChallengeContainer>
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
+              
+              {feedback && (
+                <FeedbackContainer isCorrect={feedback.is_correct} position="top">
+                  <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
+                  <p>{feedback.feedback}</p>
+                  {!feedback.is_correct && feedback.next_hint && (
+                    <p><strong>Hint:</strong> {feedback.next_hint}</p>
+                  )}
+                </FeedbackContainer>
+              )}
 
               <AnswerContainer>
-                {challenge.type === 'multiple-choice' ? (
-                  <div>
-                    {challenge.options && challenge.options.map((option, index) => (
-                      <OptionButton
-                        key={index}
-                        selected={selectedOption === option}
-                        onClick={() => handleOptionSelect(option)}
-                      >
-                        {option}
-                      </OptionButton>
-                    ))}
-                  </div>
+                {nextChallengeLoading ? (
+                  <LoadingContainer>
+                    <LoadingSpinner />
+                    <p>Loading next challenge...</p>
+                  </LoadingContainer>
                 ) : (
-                  // Default to fill-in-blank for any other type
-                  renderFillInBlankTemplate(challenge.template)
-                )}
-
-                <ButtonContainer>
-                  <HintButton onClick={toggleHint}>
-                    {showHint ? 'Hide Hint' : 'Show Hint'}
-                  </HintButton>
-
-                  <SubmitButton
-                    onClick={handleSubmit}
-                    disabled={challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer}
-                  >
-                    Submit Answer
-                  </SubmitButton>
-                </ButtonContainer>
-
-                {showHint && challenge.hint && (
-                  <HintContent>
-                    <p><strong>Hint:</strong> {challenge.hint}</p>
-                  </HintContent>
-                )}
-
-                {feedback && (
-                  <FeedbackContainer isCorrect={feedback.is_correct}>
-                    <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
-                    <p>{feedback.feedback}</p>
-                    {feedback.is_correct && feedback.next_hint && (
-                      <p><strong>Hint:</strong> {feedback.next_hint}</p>
+                  <>
+                    {challenge.type === 'multiple-choice' ? (
+                      <div>
+                        {challenge.options && challenge.options.map((option, index) => (
+                          <OptionButton
+                            key={index}
+                            selected={selectedOption === option}
+                            onClick={() => handleOptionSelect(option)}
+                            disabled={submitDisabled}
+                          >
+                            {option}
+                          </OptionButton>
+                        ))}
+                      </div>
+                    ) : (
+                      // Default to fill-in-blank for any other type
+                      renderFillInBlankTemplate(challenge.template)
                     )}
-                  </FeedbackContainer>
+
+                    <ButtonContainer>
+                      <HintButton onClick={toggleHint} disabled={submitDisabled}>
+                        {showHint ? 'Hide Hint' : 'Show Hint'}
+                      </HintButton>
+
+                      <SubmitButton
+                        onClick={handleSubmit}
+                        disabled={submitDisabled || (challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer)}
+                      >
+                        Submit Answer
+                      </SubmitButton>
+                    </ButtonContainer>
+
+                    {showHint && challenge.hint && (
+                      <HintContent>
+                        <p><strong>Hint:</strong> {challenge.hint}</p>
+                      </HintContent>
+                    )}
+                  </>
                 )}
               </AnswerContainer>
             </ChallengeContainer>

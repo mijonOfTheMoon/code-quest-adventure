@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import StartScreen from './components/StartScreen';
 import GameScreen from './components/GameScreen';
 import LoadingScreen from './components/LoadingScreen';
-import { getStory, getChallenge } from './services/api';
+import { getStory, getChallenge, preloadChallenges } from './services/api';
 
 const App = () => {
   const [gameState, setGameState] = useState('start'); // start, loading, game
@@ -29,6 +29,9 @@ const App = () => {
       const challengeData = await getChallenge(level, selectedLanguage);
       setChallenge(challengeData);
       setLoadingProgress(95);
+      
+      // Start preloading additional challenges in the background
+      preloadChallenges(level, selectedLanguage, 8);
       
       // Short delay for smooth transition
       setTimeout(() => {

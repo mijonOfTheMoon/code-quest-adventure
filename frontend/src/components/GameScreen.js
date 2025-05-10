@@ -233,7 +233,7 @@ const FeedbackContainer = styled.div`
   position: absolute;
   top: 150px;
   left: 50%;
-  transform: translate(-50%, ${props => props.visible ? '0' : '-200%'});
+  transform: translate(-50%, ${props => props.visible ? '0' : '-200%'}) scale(${props => props.visible ? '1' : '0.8'});
   z-index: 100;
   width: 80%;
   max-width: 500px;
@@ -339,9 +339,21 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
   const [blankAnswers, setBlankAnswers] = useState([]);
   const [nextChallengeLoading, setNextChallengeLoading] = useState(false);
   const [submitDisabled, setSubmitDisabled] = useState(false);
+  const [feedbackAnimation, setFeedbackAnimation] = useState(false);
   const gameCanvasRef = useRef(null);
   const gameEngineRef = useRef(null);
   const nextChallengeRef = useRef(null);
+
+  useEffect(() => {
+    if (feedback) {
+      // Start animation after a small delay
+      setTimeout(() => {
+        setFeedbackAnimation(true);
+      }, 100);
+    } else {
+      setFeedbackAnimation(false);
+    }
+  }, [feedback]);
 
   useEffect(() => {
     // If we already have a challenge from props, just initialize the game engine
@@ -561,6 +573,14 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
 
     setFeedback(result);
     setSubmitDisabled(true);
+    
+    // Reset feedback animation state
+    setFeedbackAnimation(false);
+    
+    // Trigger animation after a small delay
+    setTimeout(() => {
+      setFeedbackAnimation(true);
+    }, 50);
 
     // Update game state based on answer correctness
     if (result.is_correct) {
@@ -593,7 +613,13 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     
     // After 4 seconds (changed from 2 seconds), move to the next challenge
     setTimeout(() => {
-      moveToNextChallenge();
+      // Fade out feedback before moving to next challenge
+      setFeedbackAnimation(false);
+      
+      // Wait for fade out animation to complete before moving to next challenge
+      setTimeout(() => {
+        moveToNextChallenge();
+      }, 500);
     }, 4000);
   };
 
@@ -710,7 +736,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           
           {/* Feedback popup that appears in front of game engine */}
           {feedback && (
-            <FeedbackContainer isCorrect={feedback.is_correct} visible={feedback !== null}>
+            <FeedbackContainer isCorrect={feedback.is_correct} visible={feedbackAnimation}>
               <strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong>
               <p>{feedback.feedback}</p>
             </FeedbackContainer>

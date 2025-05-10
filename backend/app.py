@@ -3,9 +3,64 @@ from flask_cors import CORS
 import subprocess
 import json
 import os
+import re
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+def fix_json_string_escaping(json_str):
+    """
+    Fix common JSON string escaping issues, particularly with code examples
+    that contain quotes within strings
+    """
+    # This is a simplified fix - for production, a more robust solution would be needed
+    # Handle unescaped quotes in strings
+    in_string = False
+    result = ""
+    i = 0
+    
+    while i < len(json_str):
+        char = json_str[i]
+        
+        if char == '"' and (i == 0 or json_str[i-1] != '\\'):
+            in_string = not in_string
+            result += char
+        elif char == '"' and json_str[i-1] == '\\':
+            # Already escaped quote
+            result += char
+        elif in_string and char == '\\' and i+1 < len(json_str) and json_str[i+1] != '"' and json_str[i+1] != '\\':
+            # Escape backslashes that aren't already escaping something
+            result += '\\\\'
+        else:
+            result += char
+            
+        i += 1
+    
+    return result
+
+def clean_javascript_code(code):
+    """Clean JavaScript code by removing unwanted escape characters and comments"""
+    if not code:
+        return code
+    
+    # Replace literal backslash+n with actual newlines
+    code = code.replace('\\n', '\n')
+    
+    # Remove trailing backslashes at end of lines
+    code = re.sub(r'\\$', '', code, flags=re.MULTILINE)
+    
+    # Remove any comments
+    code = re.sub(r'//.*$', '', code, flags=re.MULTILINE)
+    code = re.sub(r'/\*[\s\S]*?\*/', '', code)
+    
+    # Fix other common escape issues
+    code = code.replace('\\"', '"')
+    code = code.replace('\\t', '\t')
+    
+    # Additional fix for backslashes in newlines
+    code = re.sub(r'\\\\n', '\n', code)
+    
+    return code
 
 def generate_with_amazon_q(prompt, max_tokens=500):
     """
@@ -98,9 +153,25 @@ def get_challenge():
     level = request.args.get('level', '1')
     language = request.args.get('language', 'python')
     
+    # Adjust prompt based on language to ensure proper formatting
+    language_specific_instructions = ""
+    if language.lower() == "javascript":
+        language_specific_instructions = """
+        For JavaScript challenges:
+        1. Make sure all code is valid JavaScript syntax
+        2. Use semicolons at the end of statements
+        3. For fill-in-blank challenges, ensure the template and answer are valid JavaScript
+        4. DO NOT include any comments in the code (no // or /* */ comments)
+        5. Avoid using ES6+ features that might not be widely supported
+        6. Test your code solution to ensure it works correctly
+        7. Provide clean code without escape characters
+        8. Do not use backslashes at the end of lines
+        """
+    
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
     Always generate new and unique value.
+    {language_specific_instructions}
     Format the response as JSON with the following structure:
     {{
         "question": "The question text (keep under 100 words)",
@@ -129,7 +200,27 @@ def get_challenge():
         json_end = content.rfind('}') + 1
         if json_start >= 0 and json_end > json_start:
             json_content = content[json_start:json_end]
-            parsed_content = json.loads(json_content)
+            
+            # Fix common JSON formatting issues
+            json_content = json_content.replace('\n', ' ')
+            json_content = json_content.replace('\\', '\\\\')
+            
+            # Handle escaped quotes in code examples
+            json_content = fix_json_string_escaping(json_content)
+            
+            try:
+                parsed_content = json.loads(json_content)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e}")
+                print(f"Problematic JSON: {json_content}")
+                return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 500
+            
+            # Clean JavaScript code if needed
+            if language.lower() == "javascript":
+                if "template" in parsed_content:
+                    parsed_content["template"] = clean_javascript_code(parsed_content["template"])
+                if "answer" in parsed_content:
+                    parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
             
             # Additional length checks on individual fields
             if "question" in parsed_content and len(parsed_content["question"]) > 500:
@@ -144,8 +235,13 @@ def get_challenge():
             return jsonify(parsed_content)
         else:
             return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Raw content: {result.get('content', 'No content')}")
+        return jsonify({"error": f"Invalid JSON response from Amazon Q: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({"error": f"Error processing challenge: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

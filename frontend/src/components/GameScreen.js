@@ -358,6 +358,22 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           
           isCorrect = userPythonNormalized === correctPythonNormalized;
         }
+        
+        // JavaScript-specific checks
+        if (!isCorrect && language === 'javascript') {
+          // Handle JavaScript syntax variations
+          const userJSNormalized = userLower
+            .replace(/var|let|const/g, '') // Normalize variable declarations
+            .replace(/function/g, '')      // Normalize function declarations
+            .replace(/['"`]/g, '');        // Normalize quotes
+            
+          const correctJSNormalized = correctLower
+            .replace(/var|let|const/g, '')
+            .replace(/function/g, '')
+            .replace(/['"`]/g, '');
+            
+          isCorrect = userJSNormalized === correctJSNormalized;
+        }
       }
     }
     

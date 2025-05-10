@@ -309,8 +309,45 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     // Get the user's answer
     const answer = challenge.type === 'multiple-choice' ? selectedOption : userAnswer;
     
-    // Simple client-side validation
-    const isCorrect = answer === challenge.answer;
+    // Improved answer validation
+    let isCorrect = false;
+    
+    if (challenge.type === 'multiple-choice') {
+      // For multiple choice, still use exact matching
+      isCorrect = answer === challenge.answer;
+    } else {
+      // For code challenges, use more flexible matching
+      const userAnswerClean = answer.trim().replace(/\s+/g, ' ');
+      const correctAnswerClean = challenge.answer.trim().replace(/\s+/g, ' ');
+      
+      // Check for exact match after normalization
+      if (userAnswerClean === correctAnswerClean) {
+        isCorrect = true;
+      } else {
+        // Check for semantic equivalence in code (ignoring whitespace, semicolons, etc.)
+        const userNoWhitespace = userAnswerClean.replace(/\s/g, '').replace(/;/g, '');
+        const correctNoWhitespace = correctAnswerClean.replace(/\s/g, '').replace(/;/g, '');
+        
+        // Check for case insensitivity for non-case-sensitive languages
+        const userLower = userNoWhitespace.toLowerCase();
+        const correctLower = correctNoWhitespace.toLowerCase();
+        
+        isCorrect = userNoWhitespace === correctNoWhitespace || userLower === correctLower;
+        
+        // Additional check for Python-specific equivalence
+        if (!isCorrect && language === 'python') {
+          // Handle Python print statements with different quote styles
+          const userPythonNormalized = userLower
+            .replace(/print\(['"](.+)['"]\)/g, 'print($1)')
+            .replace(/print\s*\(['"](.+)['"]\)/g, 'print($1)');
+          const correctPythonNormalized = correctLower
+            .replace(/print\(['"](.+)['"]\)/g, 'print($1)')
+            .replace(/print\s*\(['"](.+)['"]\)/g, 'print($1)');
+          
+          isCorrect = userPythonNormalized === correctPythonNormalized;
+        }
+      }
+    }
     
     // Create feedback object
     const result = {

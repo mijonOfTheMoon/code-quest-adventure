@@ -122,6 +122,7 @@ const LanguageButton = styled.button`
   border: 2px solid #f5b70a;
   padding: 0.5rem 1rem;
   margin: 0 0.5rem;
+  margin-top: 1.5rem;
   font-family: 'Press Start 2P', cursive;
   border-radius: 5px;
   cursor: pointer;

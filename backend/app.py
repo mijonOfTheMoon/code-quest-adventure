@@ -13,7 +13,19 @@ def fix_json_string_escaping(json_str):
     Fix common JSON string escaping issues, particularly with code examples
     that contain quotes within strings
     """
-    # This is a simplified fix - for production, a more robust solution would be needed
+    # First, handle Python code templates with backslashes
+    # Replace all backslashes with double backslashes in template and answer fields
+    json_str = re.sub(r'"template":\s*"(.*?)"', 
+                     lambda m: '"template": "' + m.group(1).replace('\\', '\\\\').replace('\\\\"', '\\"') + '"', 
+                     json_str, flags=re.DOTALL)
+    
+    json_str = re.sub(r'"answer":\s*"(.*?)"', 
+                     lambda m: '"answer": "' + m.group(1).replace('\\', '\\\\').replace('\\\\"', '\\"') + '"', 
+                     json_str, flags=re.DOTALL)
+    
+    # Fix unescaped quotes in strings
+    json_str = re.sub(r'(?<!")(".*?[^\\]")(?!")', r'\\\1', json_str)
+    
     # Handle unescaped quotes in strings
     in_string = False
     result = ""
@@ -59,6 +71,22 @@ def clean_javascript_code(code):
     
     # Additional fix for backslashes in newlines
     code = re.sub(r'\\\\n', '\n', code)
+    
+    # Replace underscores with commas for fill-in-blank answers
+    # Only do this for answer strings, not for template strings or variable names
+    if '_____' in code:
+        # This is likely a template, don't modify
+        pass
+    elif code.strip().startswith('_') and code.strip().endswith('_'):
+        # This looks like a placeholder, don't modify
+        pass
+    elif re.search(r'\b_[a-zA-Z0-9]+\b', code):
+        # This looks like a variable name with underscore prefix, don't modify
+        pass
+    elif ',' not in code and '_' in code and not re.search(r'[a-zA-Z0-9]_[a-zA-Z0-9]', code):
+        # This might be an answer with underscores as separators
+        # Only replace if underscores are not part of variable names
+        code = re.sub(r'(?<![a-zA-Z0-9])_+(?![a-zA-Z0-9])', ',', code)
     
     return code
 
@@ -166,19 +194,36 @@ def get_challenge():
         6. Test your code solution to ensure it works correctly
         7. Provide clean code without escape characters
         8. Do not use backslashes at the end of lines
+        9. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template
+        10. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ")
+        """
+    else:
+        language_specific_instructions = """
+        For Python challenges:
+        1. Make sure all code is valid Python syntax
+        2. For fill-in-blank challenges, ensure the template and answer are valid Python
+        3. DO NOT include any comments in the code (no # comments)
+        4. Provide clean code without escape characters
+        5. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template
+        6. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ")
+        7. DO NOT include any comments in the code (no // or /* */ comments)
+        8. NO COMMENTS AT ALL
         """
     
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
     Always generate new and unique value.
+    DO NOT include any comments in the code (no # comments)
+    DO NOT include any comments in the code (no // or /* */ comments)
+    NO COMMENTS AT ALL
     {language_specific_instructions}
     Format the response as JSON with the following structure:
     {{
-        "question": "The question text (keep under 100 words)",
-        "type": "fill-in-blank OR multiple-choice OR code-completion",
+        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION"),
+        "type": "fill-in-blank OR multiple-choice",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only),
         "template": "Code template with _____ for blanks" (for fill-in-blank only),
-        "answer": "The correct answer or solution (keep code solutions under 15 lines)",
+        "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
         "difficulty": "easy/medium/hard",
@@ -203,11 +248,14 @@ def get_challenge():
             
             # Fix common JSON formatting issues
             json_content = json_content.replace('\n', ' ')
+            
+            # Simple approach: just double escape all backslashes in the entire JSON
             json_content = json_content.replace('\\', '\\\\')
             
-            # Handle escaped quotes in code examples
-            json_content = fix_json_string_escaping(json_content)
+            # Fix double-escaped quotes
+            json_content = json_content.replace('\\\\"', '\\"')
             
+            # Handle escaped quotes in code examples
             try:
                 parsed_content = json.loads(json_content)
             except json.JSONDecodeError as e:
@@ -215,12 +263,39 @@ def get_challenge():
                 print(f"Problematic JSON: {json_content}")
                 return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 500
             
-            # Clean JavaScript code if needed
-            if language.lower() == "javascript":
-                if "template" in parsed_content:
+            # Clean code based on language
+            if "template" in parsed_content:
+                # Convert \n sequences to actual newlines for all languages
+                parsed_content["template"] = parsed_content["template"].replace('\\n', '\n')
+                
+                if language.lower() == "javascript":
                     parsed_content["template"] = clean_javascript_code(parsed_content["template"])
-                if "answer" in parsed_content:
+            
+            if "answer" in parsed_content:
+                # Also handle newlines in answers if needed
+                parsed_content["answer"] = parsed_content["answer"].replace('\\n', '\n')
+                
+                # Don't apply underscore-to-comma conversion for Python answers
+                # This was causing the bug where variable names with underscores were being corrupted
+                if language.lower() == "javascript":
                     parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
+            
+            # Ensure fill-in-blank challenges have at least 2 blanks
+            if parsed_content.get("type") == "fill-in-blank":
+                template = parsed_content.get("template", "")
+                blank_count = template.count("_____")
+                
+                if blank_count < 2:
+                    # If there's only one blank, reject and generate a new challenge
+                    return jsonify({"error": "Generated challenge doesn't meet requirements. Please try again."}), 500
+                
+                # Ensure answer has commas for multiple blanks
+                answer = parsed_content.get("answer", "")
+                if blank_count > 1 and "," not in answer:
+                    # Try to split the answer into parts
+                    parts = answer.split()
+                    if len(parts) >= blank_count:
+                        parsed_content["answer"] = ", ".join(parts[:blank_count])
             
             # Additional length checks on individual fields
             if "question" in parsed_content and len(parsed_content["question"]) > 500:

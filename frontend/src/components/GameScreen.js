@@ -251,6 +251,12 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           gameEngineRef.current.init();
         }
       }, 100);
+      
+      // Set template as initial value for fill-in-blank challenges
+      if (initialChallenge.type === 'fill-in-blank' && initialChallenge.template) {
+        setUserAnswer(initialChallenge.template);
+      }
+      
       return;
     }
 
@@ -261,6 +267,12 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
         setLoadingProgress(30);
         const data = await getChallenge(level, language);
         setChallenge(data);
+        
+        // Set template as initial value for fill-in-blank challenges
+        if (data.type === 'fill-in-blank' && data.template) {
+          setUserAnswer(data.template);
+        }
+        
         setLoadingProgress(80);
         
         // Initialize game engine after challenge is loaded
@@ -445,7 +457,6 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
                   <CodeEditor 
                     value={userAnswer}
                     onChange={handleAnswerChange}
-                    placeholder={challenge.template || "Type your answer here..."}
                   />
                 ) : (
                   <CodeEditor 

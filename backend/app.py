@@ -55,6 +55,7 @@ def get_story():
     
     prompt = f"""Generate a short adventure story introduction for a coding game called "Code Quest Adventure" for level {level}.
     The story should be exciting and set up a scenario where the player needs to solve coding challenges.
+    Always generate new and unique value. The title should be 3 random cheesy words. You must include the level on the title.
     Format the response as JSON with the following structure:
     {{
         "title": "Level {level} title",
@@ -99,6 +100,7 @@ def get_challenge():
     
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
+    Always generate new and unique value.
     Format the response as JSON with the following structure:
     {{
         "question": "The question text (keep under 100 words)",
@@ -138,63 +140,6 @@ def get_challenge():
                 parsed_content["hint"] = parsed_content["hint"][:250] + "..."
             if "explanation" in parsed_content and len(parsed_content["explanation"]) > 500:
                 parsed_content["explanation"] = parsed_content["explanation"][:500] + "..."
-                
-            return jsonify(parsed_content)
-        else:
-            return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
-
-@app.route('/api/feedback', methods=['POST'])
-def get_feedback():
-    """Get feedback on a user's answer"""
-    data = request.json
-    user_answer = data.get('answer', '')
-    correct_answer = data.get('correct_answer', '')
-    question = data.get('question', '')
-    
-    # Limit the length of inputs to prevent excessively long prompts
-    if len(user_answer) > 1000:
-        user_answer = user_answer[:1000] + "..."
-    if len(correct_answer) > 1000:
-        correct_answer = correct_answer[:1000] + "..."
-    if len(question) > 500:
-        question = question[:500] + "..."
-    
-    prompt = f"""Evaluate this answer for a coding game:
-    Question: {question}
-    Correct answer: {correct_answer}
-    User answer: {user_answer}
-    
-    Format the response as JSON with the following structure:
-    {{
-        "is_correct": true/false,
-        "feedback": "Detailed feedback on the answer (under 100 words)",
-        "next_hint": "A hint if they got it wrong (under 50 words)"
-    }}
-    """
-    
-    result = generate_with_amazon_q(prompt, max_tokens=200)
-    
-    if "error" in result:
-        print(f"Error from Amazon Q: {result['error']}")
-        return jsonify({"error": "Failed to generate feedback"}), 500
-    
-    try:
-        # Try to parse the response as JSON
-        content = result["content"]
-        # Find JSON content between curly braces
-        json_start = content.find('{')
-        json_end = content.rfind('}') + 1
-        if json_start >= 0 and json_end > json_start:
-            json_content = content[json_start:json_end]
-            parsed_content = json.loads(json_content)
-            
-            # Additional length checks on individual fields
-            if "feedback" in parsed_content and len(parsed_content["feedback"]) > 500:
-                parsed_content["feedback"] = parsed_content["feedback"][:500] + "..."
-            if "next_hint" in parsed_content and parsed_content["next_hint"] and len(parsed_content["next_hint"]) > 250:
-                parsed_content["next_hint"] = parsed_content["next_hint"][:250] + "..."
                 
             return jsonify(parsed_content)
         else:

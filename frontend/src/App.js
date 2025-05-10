@@ -45,8 +45,6 @@ const App = () => {
         setStory({
           title: "Connection Error",
           story: "Unable to connect to the adventure server. Please try again later.",
-          setting: "Error Zone",
-          character: "Debug Dragon",
           objective: "Refresh the page to try again"
         });
       }

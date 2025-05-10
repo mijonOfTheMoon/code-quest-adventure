@@ -11,6 +11,12 @@ import background from '../assets/platformer/tiles and background_foreground (ne
 import attackEffect from '../assets/platformer/herochar sprites(new)/sword_effect_strip_4(new).png';
 import hitEffect from '../assets/platformer/herochar sprites(new)/hit_sparkle_anim_strip_4.png';
 import levelUpEffect from '../assets/platformer/miscellaneous sprites/orb_collected_anim_strip_5.png';
+import grassProps from '../assets/platformer/miscellaneous sprites/grass_props.png';
+import flowersProps from '../assets/platformer/miscellaneous sprites/flowers_props.png';
+import bigFlowersProps from '../assets/platformer/miscellaneous sprites/bigflowers_props.png';
+import rootProps from '../assets/platformer/miscellaneous sprites/root_props.png';
+import dryGrassProps from '../assets/platformer/miscellaneous sprites/drygrass_props.png';
+import savePointAnim from '../assets/platformer/miscellaneous sprites/save_point_anim_strip_9.png';
 
 export default class GameEngine {
   constructor(containerId, onGameReady) {
@@ -50,8 +56,8 @@ export default class GameEngine {
     const config = {
       type: Phaser.AUTO,
       parent: this.containerId,
-      width: 800,
-      height: 400,
+      width: window.innerWidth,
+      height: 500,
       transparent: true,
       scene: {
         preload: this.preload.bind(this),
@@ -119,13 +125,32 @@ export default class GameEngine {
       frameHeight: 16 
     });
     
+    this.gameScene.load.spritesheet('save_point', savePointAnim, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+    
+    // Load environment props
+    this.gameScene.load.image('grass', grassProps);
+    this.gameScene.load.image('flowers', flowersProps);
+    this.gameScene.load.image('big_flowers', bigFlowersProps);
+    this.gameScene.load.image('roots', rootProps);
+    this.gameScene.load.image('dry_grass', dryGrassProps);
+    
     this.gameScene.load.image('background', background);
   }
 
   create() {
+    // Get the actual width of the game
+    const gameWidth = this.game.config.width;
+    const gameHeight = this.game.config.height;
+    
     // Add background with proper scaling to cover the entire area
-    const bg = this.gameScene.add.image(400, 200, 'background');
-    bg.setDisplaySize(800, 400); // Force it to cover the entire game area
+    const bg = this.gameScene.add.image(gameWidth/2, gameHeight/2, 'background');
+    bg.setDisplaySize(gameWidth, gameHeight); // Force it to cover the entire game area
+    
+    // Add decorative props
+    this.addEnvironmentProps();
     
     // Create player animations
     this.createPlayerAnimations();
@@ -137,7 +162,7 @@ export default class GameEngine {
     this.createEffectAnimations();
     
     // Create player (hero)
-    this.player = this.gameScene.physics.add.sprite(200, 220, 'hero_idle');
+    this.player = this.gameScene.physics.add.sprite(gameWidth * 0.25, gameHeight * 0.6, 'hero_idle');
     this.player.setScale(5.0); // Make the player bigger
     
     // Create enemy based on current level
@@ -171,6 +196,85 @@ export default class GameEngine {
     if (this.onGameReady) {
       this.onGameReady();
     }
+  }
+  
+  addEnvironmentProps() {
+    // Get the actual width of the game
+    const gameWidth = this.game.config.width;
+    const gameHeight = this.game.config.height;
+    
+    // Add save point animation
+    const savePoint = this.gameScene.physics.add.sprite(100, gameHeight - 100, 'save_point');
+    savePoint.setScale(3);
+    
+    // Create save point animation
+    this.gameScene.anims.create({
+      key: 'save_point_anim',
+      frames: this.gameScene.anims.generateFrameNumbers('save_point', { start: 0, end: 8 }),
+      frameRate: 8,
+      repeat: -1
+    });
+    
+    // Play save point animation
+    savePoint.anims.play('save_point_anim', true);
+    
+    // Add grass props at the bottom
+    const grassCount = Math.ceil(gameWidth / 80); // Calculate how many grass sprites we need
+    for (let i = 0; i < grassCount; i++) {
+      const x = 40 + i * 80;
+      const grassSprite = this.gameScene.add.image(x, gameHeight - 50, 'grass');
+      grassSprite.setScale(3);
+    }
+    
+    // Add dry grass props
+    const dryGrassPositions = [
+      { x: gameWidth * 0.15, y: gameHeight - 60 },
+      { x: gameWidth * 0.35, y: gameHeight - 55 },
+      { x: gameWidth * 0.65, y: gameHeight - 60 },
+      { x: gameWidth * 0.85, y: gameHeight - 55 }
+    ];
+    
+    dryGrassPositions.forEach(pos => {
+      const dryGrassSprite = this.gameScene.add.image(pos.x, pos.y, 'dry_grass');
+      dryGrassSprite.setScale(3);
+    });
+    
+    // Add flower props scattered around
+    const flowerPositions = [
+      { x: gameWidth * 0.1, y: gameHeight - 70 },
+      { x: gameWidth * 0.3, y: gameHeight - 60 },
+      { x: gameWidth * 0.5, y: gameHeight - 65 },
+      { x: gameWidth * 0.7, y: gameHeight - 55 },
+      { x: gameWidth * 0.9, y: gameHeight - 70 }
+    ];
+    
+    flowerPositions.forEach(pos => {
+      const flowerSprite = this.gameScene.add.image(pos.x, pos.y, 'flowers');
+      flowerSprite.setScale(2.5);
+    });
+    
+    // Add big flowers as focal points
+    const bigFlowerPositions = [
+      { x: gameWidth * 0.25, y: gameHeight - 80 },
+      { x: gameWidth * 0.75, y: gameHeight - 75 }
+    ];
+    
+    bigFlowerPositions.forEach(pos => {
+      const bigFlowerSprite = this.gameScene.add.image(pos.x, pos.y, 'big_flowers');
+      bigFlowerSprite.setScale(3);
+    });
+    
+    // Add roots
+    const rootPositions = [
+      { x: gameWidth * 0.2, y: gameHeight - 60 },
+      { x: gameWidth * 0.6, y: gameHeight - 55 },
+      { x: gameWidth * 0.95, y: gameHeight - 60 }
+    ];
+    
+    rootPositions.forEach(pos => {
+      const rootSprite = this.gameScene.add.image(pos.x, pos.y, 'roots');
+      rootSprite.setScale(3);
+    });
   }
   
   createPlayerAnimations() {
@@ -252,6 +356,10 @@ export default class GameEngine {
   }
   
   createEnemy() {
+    // Get the actual width of the game
+    const gameWidth = this.game.config.width;
+    const gameHeight = this.game.config.height;
+    
     // Determine enemy type based on level
     const enemyIndex = Math.min(this.currentLevel - 1, this.enemyTypes.length - 1);
     const enemyType = this.enemyTypes[enemyIndex];
@@ -262,7 +370,7 @@ export default class GameEngine {
     }
     
     // Create new enemy
-    this.enemy = this.gameScene.physics.add.sprite(600, 220 + (enemyType.offsetY || 0), 'goblin_idle');
+    this.enemy = this.gameScene.physics.add.sprite(gameWidth * 0.75, gameHeight * 0.6, 'goblin_idle');
     this.enemy.setScale(4.0); // Make the enemy bigger
     this.enemy.flipX = true; // Make sure enemy is facing left
     
@@ -280,10 +388,14 @@ export default class GameEngine {
   }
   
   update() {
+    // Get the actual height of the game
+    const gameHeight = this.game.config.height;
+    
     // Gentle floating animation for idle state with slower motion
     if (!this.attackAnimationPlaying) {
-      this.player.y = 220 + Math.sin(this.gameScene.time.now / 2000) * 5; // Slower motion
-      this.enemy.y = 220 + Math.cos(this.gameScene.time.now / 1600) * 5; // Slower motion
+      const baseY = gameHeight * 0.6;
+      this.player.y = baseY + Math.sin(this.gameScene.time.now / 2000) * 5; // Slower motion
+      this.enemy.y = baseY + Math.cos(this.gameScene.time.now / 1600) * 5; // Slower motion
       
       // Update health bar positions to follow characters
       if (this.playerHealthBarBorder) {
@@ -299,62 +411,54 @@ export default class GameEngine {
   }
   
   createHealthBars() {
-    // Player health bar with rounded corners and border
-    const playerBarWidth = 120;
-    const playerBarHeight = 15;
-    const playerBarRadius = 7;
-    const playerBarX = this.player.x;
-    const playerBarY = this.player.y - 70;
+    // Get current positions
+    const playerY = this.player.y - 70;
+    const enemyY = this.enemy.y - 70;
     
-    // Create border (slightly larger than the health bar)
+    // Update player health bar border position
     this.playerHealthBarBorder = this.gameScene.add.graphics();
     this.playerHealthBarBorder.fillStyle(0x000000, 0.8);
     this.playerHealthBarBorder.fillRoundedRect(
-      playerBarX - playerBarWidth/2 - 2, 
-      playerBarY - playerBarHeight/2 - 2, 
-      playerBarWidth + 4, 
-      playerBarHeight + 4, 
-      playerBarRadius + 1
+      this.player.x - 62, 
+      playerY - 9.5, 
+      124, 
+      19, 
+      8
     );
     
-    // Create actual health bar
+    // Update player health bar
     this.playerHealthBar = this.gameScene.add.graphics();
     this.playerHealthBar.fillStyle(0x66ccff, 1);
+    const playerBarWidth = 120 * (this.playerHealth / this.playerMaxHealth);
     this.playerHealthBar.fillRoundedRect(
-      playerBarX - playerBarWidth/2, 
-      playerBarY - playerBarHeight/2, 
+      this.player.x - 60, 
+      playerY - 7.5, 
       playerBarWidth, 
-      playerBarHeight, 
-      playerBarRadius
+      15, 
+      7
     );
     
-    // Enemy health bar with rounded corners and border
-    const enemyBarWidth = 120;
-    const enemyBarHeight = 15;
-    const enemyBarRadius = 7;
-    const enemyBarX = this.enemy.x;
-    const enemyBarY = this.enemy.y - 70;
-    
-    // Create border (slightly larger than the health bar)
+    // Update enemy health bar border position
     this.enemyHealthBarBorder = this.gameScene.add.graphics();
     this.enemyHealthBarBorder.fillStyle(0x000000, 0.8);
     this.enemyHealthBarBorder.fillRoundedRect(
-      enemyBarX - enemyBarWidth/2 - 2, 
-      enemyBarY - enemyBarHeight/2 - 2, 
-      enemyBarWidth + 4, 
-      enemyBarHeight + 4, 
-      enemyBarRadius + 1
+      this.enemy.x - 62, 
+      enemyY - 9.5, 
+      124, 
+      19, 
+      8
     );
     
-    // Create actual health bar
+    // Update enemy health bar
     this.enemyHealthBar = this.gameScene.add.graphics();
     this.enemyHealthBar.fillStyle(0xff9999, 1);
+    const enemyBarWidth = 120 * (this.enemyHealth / this.enemyMaxHealth);
     this.enemyHealthBar.fillRoundedRect(
-      enemyBarX - enemyBarWidth/2, 
-      enemyBarY - enemyBarHeight/2, 
+      this.enemy.x - 60, 
+      enemyY - 7.5, 
       enemyBarWidth, 
-      enemyBarHeight, 
-      enemyBarRadius
+      15, 
+      7
     );
   }
   
@@ -639,7 +743,10 @@ export default class GameEngine {
   }
   
   gameOver() {
-    const gameOverText = this.gameScene.add.text(400, 200, 'GAME OVER', { 
+    const gameWidth = this.game.config.width;
+    const gameHeight = this.game.config.height;
+    
+    const gameOverText = this.gameScene.add.text(gameWidth/2, gameHeight/2, 'GAME OVER', { 
       fontSize: '48px', 
       fill: '#ff6666',
       fontFamily: '"Press Start 2P", cursive',

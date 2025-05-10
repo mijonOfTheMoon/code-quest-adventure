@@ -10,23 +10,33 @@ const Container = styled.div`
   height: 100vh;
   background-color: #0a0a23;
   color: #ffffff;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 `;
 
 const GameContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
 `;
 
 const GameArea = styled.div`
-  flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* Ensure content doesn't overflow */
 `;
 
 const GameCanvas = styled.div`
-  height: 400px;
-  width: 100%;
+  height: 500px;
+  width: 100vw;
   position: relative;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+`;
+
+const ContentContainer = styled.div`
+  display: flex;
+  width: 100%;
 `;
 
 const StoryContainer = styled.div`
@@ -36,6 +46,7 @@ const StoryContainer = styled.div`
   border-radius: 10px;
   margin: 10px;
   overflow-y: auto;
+  max-height: 600px; /* Increased from 400px */
 `;
 
 const StoryTitle = styled.h2`
@@ -60,13 +71,15 @@ const StoryLabel = styled.span`
 `;
 
 const ChallengeContainer = styled.div`
-  flex: 1;
+  flex: 2;
   padding: 20px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 10px;
   margin: 10px;
   display: flex;
   flex-direction: column;
+  max-height: 600px; /* Increased from 400px */
+  overflow-y: auto;
 `;
 
 const ChallengeTitle = styled.h3`
@@ -93,7 +106,7 @@ const AnswerContainer = styled.div`
 
 const CodeEditor = styled.textarea`
   width: 100%;
-  height: 150px;
+  height: 125px; /* Increased from 150px */
   background-color: #1e1e3f;
   color: #fff;
   font-family: 'Courier New', monospace;
@@ -347,76 +360,78 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       <GameContainer>
         <GameArea>
           <GameCanvas id="game-canvas" ref={gameCanvasRef} />
-          <StoryContainer>
-            <StoryTitle>{story?.title || "Adventure Begins"}</StoryTitle>
-            <StoryText>{story?.story || "Your coding adventure is about to begin..."}</StoryText>
-            <StoryText>
-              <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
-            </StoryText>
-          </StoryContainer>
-        </GameArea>
-        
-        <ChallengeContainer>
-          <ChallengeTitle>Coding Challenge</ChallengeTitle>
-          <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
-          
-          <AnswerContainer>
-            {challenge.type === 'multiple-choice' ? (
-              <div>
-                {challenge.options && challenge.options.map((option, index) => (
-                  <OptionButton 
-                    key={index}
-                    selected={selectedOption === option}
-                    onClick={() => handleOptionSelect(option)}
-                  >
-                    {option}
-                  </OptionButton>
-                ))}
-              </div>
-            ) : challenge.type === 'fill-in-blank' ? (
-              <CodeEditor 
-                value={userAnswer}
-                onChange={handleAnswerChange}
-                placeholder={challenge.template || "Type your answer here..."}
-              />
-            ) : (
-              <CodeEditor 
-                value={userAnswer}
-                onChange={handleAnswerChange}
-                placeholder="Write your code here..."
-              />
-            )}
+          <ContentContainer>
+            <StoryContainer>
+              <StoryTitle>{story?.title || "Adventure Begins"}</StoryTitle>
+              <StoryText>{story?.story || "Your coding adventure is about to begin..."}</StoryText>
+              <StoryText>
+                <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
+              </StoryText>
+            </StoryContainer>
             
-            <ButtonContainer>
-              <HintButton onClick={toggleHint}>
-                {showHint ? 'Hide Hint' : 'Show Hint'}
-              </HintButton>
+            <ChallengeContainer>
+              <ChallengeTitle>Coding Challenge</ChallengeTitle>
+              <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
               
-              <SubmitButton 
-                onClick={handleSubmit}
-                disabled={challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer}
-              >
-                Submit Answer
-              </SubmitButton>
-            </ButtonContainer>
-            
-            {showHint && challenge.hint && (
-              <HintContent>
-                <p><strong>Hint:</strong> {challenge.hint}</p>
-              </HintContent>
-            )}
-            
-            {feedback && (
-              <FeedbackContainer isCorrect={feedback.is_correct}>
-                <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
-                <p>{feedback.feedback}</p>
-                {!feedback.is_correct && feedback.next_hint && (
-                  <p><strong>Hint:</strong> {feedback.next_hint}</p>
+              <AnswerContainer>
+                {challenge.type === 'multiple-choice' ? (
+                  <div>
+                    {challenge.options && challenge.options.map((option, index) => (
+                      <OptionButton 
+                        key={index}
+                        selected={selectedOption === option}
+                        onClick={() => handleOptionSelect(option)}
+                      >
+                        {option}
+                      </OptionButton>
+                    ))}
+                  </div>
+                ) : challenge.type === 'fill-in-blank' ? (
+                  <CodeEditor 
+                    value={userAnswer}
+                    onChange={handleAnswerChange}
+                    placeholder={challenge.template || "Type your answer here..."}
+                  />
+                ) : (
+                  <CodeEditor 
+                    value={userAnswer}
+                    onChange={handleAnswerChange}
+                    placeholder="Write your code here..."
+                  />
                 )}
-              </FeedbackContainer>
-            )}
-          </AnswerContainer>
-        </ChallengeContainer>
+                
+                <ButtonContainer>
+                  <HintButton onClick={toggleHint}>
+                    {showHint ? 'Hide Hint' : 'Show Hint'}
+                  </HintButton>
+                  
+                  <SubmitButton 
+                    onClick={handleSubmit}
+                    disabled={challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer}
+                  >
+                    Submit Answer
+                  </SubmitButton>
+                </ButtonContainer>
+                
+                {showHint && challenge.hint && (
+                  <HintContent>
+                    <p><strong>Hint:</strong> {challenge.hint}</p>
+                  </HintContent>
+                )}
+                
+                {feedback && (
+                  <FeedbackContainer isCorrect={feedback.is_correct}>
+                    <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
+                    <p>{feedback.feedback}</p>
+                    {!feedback.is_correct && feedback.next_hint && (
+                      <p><strong>Hint:</strong> {feedback.next_hint}</p>
+                    )}
+                  </FeedbackContainer>
+                )}
+              </AnswerContainer>
+            </ChallengeContainer>
+          </ContentContainer>
+        </GameArea>
       </GameContainer>
     </Container>
   );

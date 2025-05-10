@@ -24,10 +24,11 @@ const GameArea = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Ensure content doesn't overflow */
+  height: 100vh; /* Full viewport height */
 `;
 
 const GameCanvas = styled.div`
-  height: 500px;
+  height: 400px; /* Changed from 500px to 400px */
   width: 100vw;
   position: relative;
   margin-left: calc(-50vw + 50%);
@@ -37,6 +38,8 @@ const GameCanvas = styled.div`
 const ContentContainer = styled.div`
   display: flex;
   width: 100%;
+  flex: 1;
+  height: calc(100vh - 400px - 20px); /* Full height minus game height and margins */
 `;
 
 const StoryContainer = styled.div`
@@ -46,7 +49,7 @@ const StoryContainer = styled.div`
   border-radius: 10px;
   margin: 10px;
   overflow-y: auto;
-  max-height: 600px; /* Increased from 400px */
+  height: 100%; /* Take full height */
 `;
 
 const StoryTitle = styled.h2`
@@ -78,8 +81,8 @@ const ChallengeContainer = styled.div`
   margin: 10px;
   display: flex;
   flex-direction: column;
-  max-height: 600px; /* Increased from 400px */
-  overflow-y: auto;
+  height: 100%; /* Take full height */
+  overflow-y: hidden; /* Changed from auto to hidden */
 `;
 
 const ChallengeTitle = styled.h3`
@@ -101,12 +104,17 @@ const ChallengeQuestion = styled.div`
 `;
 
 const AnswerContainer = styled.div`
-  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  padding-bottom: 60px; /* Space for the button container */
 `;
 
 const CodeEditor = styled.textarea`
   width: 100%;
-  height: 125px; /* Increased from 150px */
+  height: 180px; /* Adjusted to leave space for feedback and buttons */
   background-color: #1e1e3f;
   color: #fff;
   font-family: 'Courier New', monospace;
@@ -114,6 +122,7 @@ const CodeEditor = styled.textarea`
   border: 1px solid #333;
   border-radius: 5px;
   resize: none;
+  margin-bottom: 15px;
 `;
 
 const OptionButton = styled.button`
@@ -141,7 +150,13 @@ const OptionButton = styled.button`
 const ButtonContainer = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-top: 15px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 15px 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid #333;
 `;
 
 const SubmitButton = styled.button`
@@ -170,6 +185,7 @@ const SubmitButton = styled.button`
 
 const FeedbackContainer = styled.div`
   margin-top: 15px;
+  margin-bottom: 15px;
   padding: 10px;
   border-radius: 5px;
   background-color: ${props => props.isCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
@@ -193,11 +209,13 @@ const HintButton = styled.button`
 
 const HintContent = styled.div`
   margin-top: 10px;
+  margin-bottom: 15px;
   padding: 10px;
   background-color: #2c2c54;
   border-radius: 5px;
   font-family: 'Courier New', monospace;
   color: #e0e0e0;
+  border-left: 4px solid #f5b70a;
 `;
 
 const ErrorMessage = styled.div`
@@ -423,7 +441,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
                   <FeedbackContainer isCorrect={feedback.is_correct}>
                     <p><strong>{feedback.is_correct ? 'Correct!' : 'Incorrect!'}</strong></p>
                     <p>{feedback.feedback}</p>
-                    {!feedback.is_correct && feedback.next_hint && (
+                    {feedback.is_correct && feedback.next_hint && (
                       <p><strong>Hint:</strong> {feedback.next_hint}</p>
                     )}
                   </FeedbackContainer>

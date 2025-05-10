@@ -16,7 +16,6 @@ import flowersProps from '../assets/platformer/miscellaneous sprites/flowers_pro
 import bigFlowersProps from '../assets/platformer/miscellaneous sprites/bigflowers_props.png';
 import rootProps from '../assets/platformer/miscellaneous sprites/root_props.png';
 import dryGrassProps from '../assets/platformer/miscellaneous sprites/drygrass_props.png';
-import savePointAnim from '../assets/platformer/miscellaneous sprites/save_point_anim_strip_9.png';
 
 export default class GameEngine {
   constructor(containerId, onGameReady) {
@@ -57,7 +56,7 @@ export default class GameEngine {
       type: Phaser.AUTO,
       parent: this.containerId,
       width: window.innerWidth,
-      height: 500,
+      height: 400, // Changed from 500 to 400
       transparent: true,
       scene: {
         preload: this.preload.bind(this),
@@ -78,65 +77,61 @@ export default class GameEngine {
 
   preload() {
     this.gameScene = this.game.scene.scenes[0];
-    
+
     // Load game assets with spritesheets
-    this.gameScene.load.spritesheet('hero_idle', heroSpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('hero_attack', heroAttackSpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('hero_hit', heroHitSpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('goblin_idle', enemySpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('goblin_attack', goblinAttackSpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('goblin_hit', goblinHitSpritesheet, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('attack_effect', attackEffect, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('hit_effect', hitEffect, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('level_up', levelUpEffect, { 
-      frameWidth: 16, 
-      frameHeight: 16 
-    });
-    
-    this.gameScene.load.spritesheet('save_point', savePointAnim, {
+    this.gameScene.load.spritesheet('hero_idle', heroSpritesheet, {
       frameWidth: 16,
       frameHeight: 16
     });
-    
+
+    this.gameScene.load.spritesheet('hero_attack', heroAttackSpritesheet, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('hero_hit', heroHitSpritesheet, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('goblin_idle', enemySpritesheet, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('goblin_attack', goblinAttackSpritesheet, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('goblin_hit', goblinHitSpritesheet, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('attack_effect', attackEffect, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('hit_effect', hitEffect, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+    this.gameScene.load.spritesheet('level_up', levelUpEffect, {
+      frameWidth: 16,
+      frameHeight: 16
+    });
+
+
     // Load environment props
     this.gameScene.load.image('grass', grassProps);
     this.gameScene.load.image('flowers', flowersProps);
     this.gameScene.load.image('big_flowers', bigFlowersProps);
     this.gameScene.load.image('roots', rootProps);
     this.gameScene.load.image('dry_grass', dryGrassProps);
-    
+
     this.gameScene.load.image('background', background);
   }
 
@@ -144,80 +139,65 @@ export default class GameEngine {
     // Get the actual width of the game
     const gameWidth = this.game.config.width;
     const gameHeight = this.game.config.height;
-    
+
     // Add background with proper scaling to cover the entire area
-    const bg = this.gameScene.add.image(gameWidth/2, gameHeight/2, 'background');
+    const bg = this.gameScene.add.image(gameWidth / 2, gameHeight / 2, 'background');
     bg.setDisplaySize(gameWidth, gameHeight); // Force it to cover the entire game area
-    
+
     // Add decorative props
     this.addEnvironmentProps();
-    
+
     // Create player animations
     this.createPlayerAnimations();
-    
+
     // Create enemy animations
     this.createEnemyAnimations();
-    
+
     // Create effect animations
     this.createEffectAnimations();
-    
+
     // Create player (hero)
     this.player = this.gameScene.physics.add.sprite(gameWidth * 0.25, gameHeight * 0.6, 'hero_idle');
     this.player.setScale(5.0); // Make the player bigger
-    
+
     // Create enemy based on current level
     this.createEnemy();
-    
+
     // Create health bars
     this.createHealthBars();
-    
+
     // Create level and XP text
-    this.levelText = this.gameScene.add.text(20, 20, `Level: ${this.currentLevel}`, { 
-      fontSize: '24px', 
+    this.levelText = this.gameScene.add.text(20, 20, `Level: ${this.currentLevel}`, {
+      fontSize: '24px',
       fill: '#fff',
       fontFamily: '"Press Start 2P", cursive',
       stroke: '#000',
       strokeThickness: 4
     });
-    
-    this.xpText = this.gameScene.add.text(20, 50, `XP: ${this.xpPoints}`, { 
-      fontSize: '18px', 
+
+    this.xpText = this.gameScene.add.text(20, 50, `XP: ${this.xpPoints}`, {
+      fontSize: '18px',
       fill: '#fff',
       fontFamily: '"Press Start 2P", cursive',
       stroke: '#000',
       strokeThickness: 3
     });
-    
+
     // Play idle animations
     this.player.anims.play('hero_idle', true);
     this.enemy.anims.play('goblin_idle', true);
-    
+
     // Notify that game is ready
     if (this.onGameReady) {
       this.onGameReady();
     }
   }
-  
+
   addEnvironmentProps() {
     // Get the actual width of the game
     const gameWidth = this.game.config.width;
     const gameHeight = this.game.config.height;
-    
-    // Add save point animation
-    const savePoint = this.gameScene.physics.add.sprite(100, gameHeight - 100, 'save_point');
-    savePoint.setScale(3);
-    
-    // Create save point animation
-    this.gameScene.anims.create({
-      key: 'save_point_anim',
-      frames: this.gameScene.anims.generateFrameNumbers('save_point', { start: 0, end: 8 }),
-      frameRate: 8,
-      repeat: -1
-    });
-    
-    // Play save point animation
-    savePoint.anims.play('save_point_anim', true);
-    
+
     // Add grass props at the bottom
     const grassCount = Math.ceil(gameWidth / 80); // Calculate how many grass sprites we need
     for (let i = 0; i < grassCount; i++) {
@@ -225,7 +205,7 @@ export default class GameEngine {
       const grassSprite = this.gameScene.add.image(x, gameHeight - 50, 'grass');
       grassSprite.setScale(3);
     }
-    
+
     // Add dry grass props
     const dryGrassPositions = [
       { x: gameWidth * 0.15, y: gameHeight - 60 },
@@ -233,12 +213,12 @@ export default class GameEngine {
       { x: gameWidth * 0.65, y: gameHeight - 60 },
       { x: gameWidth * 0.85, y: gameHeight - 55 }
     ];
-    
+
     dryGrassPositions.forEach(pos => {
       const dryGrassSprite = this.gameScene.add.image(pos.x, pos.y, 'dry_grass');
       dryGrassSprite.setScale(3);
     });
-    
+
     // Add flower props scattered around
     const flowerPositions = [
       { x: gameWidth * 0.1, y: gameHeight - 70 },
@@ -247,36 +227,37 @@ export default class GameEngine {
       { x: gameWidth * 0.7, y: gameHeight - 55 },
       { x: gameWidth * 0.9, y: gameHeight - 70 }
     ];
-    
+
     flowerPositions.forEach(pos => {
       const flowerSprite = this.gameScene.add.image(pos.x, pos.y, 'flowers');
       flowerSprite.setScale(2.5);
     });
-    
+
     // Add big flowers as focal points
     const bigFlowerPositions = [
       { x: gameWidth * 0.25, y: gameHeight - 80 },
       { x: gameWidth * 0.75, y: gameHeight - 75 }
     ];
-    
+
     bigFlowerPositions.forEach(pos => {
       const bigFlowerSprite = this.gameScene.add.image(pos.x, pos.y, 'big_flowers');
       bigFlowerSprite.setScale(3);
     });
-    
+
     // Add roots
     const rootPositions = [
       { x: gameWidth * 0.2, y: gameHeight - 60 },
       { x: gameWidth * 0.6, y: gameHeight - 55 },
       { x: gameWidth * 0.95, y: gameHeight - 60 }
     ];
-    
+
     rootPositions.forEach(pos => {
       const rootSprite = this.gameScene.add.image(pos.x, pos.y, 'roots');
       rootSprite.setScale(3);
+      rootSprite.flipY = true; // This flips the root sprite upside down
     });
   }
-  
+
   createPlayerAnimations() {
     // Idle animation
     this.gameScene.anims.create({
@@ -285,7 +266,7 @@ export default class GameEngine {
       frameRate: 5, // Slower animation
       repeat: -1
     });
-    
+
     // Attack animation
     this.gameScene.anims.create({
       key: 'hero_attack',
@@ -293,7 +274,7 @@ export default class GameEngine {
       frameRate: 8,
       repeat: 0
     });
-    
+
     // Hit animation
     this.gameScene.anims.create({
       key: 'hero_hit',
@@ -302,7 +283,7 @@ export default class GameEngine {
       repeat: 0
     });
   }
-  
+
   createEnemyAnimations() {
     // Goblin idle animation
     this.gameScene.anims.create({
@@ -311,7 +292,7 @@ export default class GameEngine {
       frameRate: 5, // Slower animation
       repeat: -1
     });
-    
+
     // Goblin attack animation
     this.gameScene.anims.create({
       key: 'goblin_attack',
@@ -319,7 +300,7 @@ export default class GameEngine {
       frameRate: 8,
       repeat: 0
     });
-    
+
     // Goblin hit animation
     this.gameScene.anims.create({
       key: 'goblin_hit',
@@ -328,7 +309,7 @@ export default class GameEngine {
       repeat: 0
     });
   }
-  
+
   createEffectAnimations() {
     // Attack effect animation
     this.gameScene.anims.create({
@@ -337,7 +318,7 @@ export default class GameEngine {
       frameRate: 10,
       repeat: 0
     });
-    
+
     // Hit effect animation
     this.gameScene.anims.create({
       key: 'hit_effect',
@@ -345,7 +326,7 @@ export default class GameEngine {
       frameRate: 10,
       repeat: 0
     });
-    
+
     // Level up effect animation
     this.gameScene.anims.create({
       key: 'level_up_effect',
@@ -354,26 +335,26 @@ export default class GameEngine {
       repeat: 0
     });
   }
-  
+
   createEnemy() {
     // Get the actual width of the game
     const gameWidth = this.game.config.width;
     const gameHeight = this.game.config.height;
-    
+
     // Determine enemy type based on level
     const enemyIndex = Math.min(this.currentLevel - 1, this.enemyTypes.length - 1);
     const enemyType = this.enemyTypes[enemyIndex];
-    
+
     // Remove previous enemy if it exists
     if (this.enemy) {
       this.enemy.destroy();
     }
-    
+
     // Create new enemy
     this.enemy = this.gameScene.physics.add.sprite(gameWidth * 0.75, gameHeight * 0.6, 'goblin_idle');
     this.enemy.setScale(4.0); // Make the enemy bigger
     this.enemy.flipX = true; // Make sure enemy is facing left
-    
+
     // Apply tint based on level (gets redder/darker with higher levels)
     const baseTint = 0xffaaaa;
     const darkenFactor = Math.max(0, Math.min(0.4, (this.currentLevel - 1) * 0.1));
@@ -382,174 +363,168 @@ export default class GameEngine {
     const b = Math.floor(0xaa * (1 - darkenFactor));
     const tint = (r << 16) | (g << 8) | b;
     this.enemy.setTint(tint);
-    
+
     // Play idle animation
     this.enemy.anims.play('goblin_idle', true);
   }
-  
+
   update() {
     // Get the actual height of the game
     const gameHeight = this.game.config.height;
-    
+
     // Gentle floating animation for idle state with slower motion
     if (!this.attackAnimationPlaying) {
       const baseY = gameHeight * 0.6;
       this.player.y = baseY + Math.sin(this.gameScene.time.now / 2000) * 5; // Slower motion
       this.enemy.y = baseY + Math.cos(this.gameScene.time.now / 1600) * 5; // Slower motion
-      
+
       // Update health bar positions to follow characters
-      if (this.playerHealthBarBorder) {
-        this.playerHealthBarBorder.y = this.player.y - 70;
-        this.playerHealthBar.y = this.player.y - 70;
-      }
-      
-      if (this.enemyHealthBarBorder) {
-        this.enemyHealthBarBorder.y = this.enemy.y - 70;
-        this.enemyHealthBar.y = this.enemy.y - 70;
+      if (this.playerHealthBarBorder && this.playerHealthBar) {
+        this.updateHealthBars();
       }
     }
   }
-  
+
   createHealthBars() {
-    // Get current positions
-    const playerY = this.player.y - 70;
-    const enemyY = this.enemy.y - 70;
-    
+    // Position health bars above characters
+    const playerY = this.player.y - 50; // Moved up closer to character
+    const enemyY = this.enemy.y - 50; // Moved up closer to character
+
     // Update player health bar border position
     this.playerHealthBarBorder = this.gameScene.add.graphics();
     this.playerHealthBarBorder.fillStyle(0x000000, 0.8);
     this.playerHealthBarBorder.fillRoundedRect(
-      this.player.x - 62, 
-      playerY - 9.5, 
-      124, 
-      19, 
-      8
+      this.player.x - 40,
+      playerY - 9.5,
+      80, // Made bar smaller
+      12, // Made bar smaller
+      6
     );
-    
+
     // Update player health bar
     this.playerHealthBar = this.gameScene.add.graphics();
     this.playerHealthBar.fillStyle(0x66ccff, 1);
-    const playerBarWidth = 120 * (this.playerHealth / this.playerMaxHealth);
+    const playerBarWidth = 76 * (this.playerHealth / this.playerMaxHealth); // Adjusted width
     this.playerHealthBar.fillRoundedRect(
-      this.player.x - 60, 
-      playerY - 7.5, 
-      playerBarWidth, 
-      15, 
-      7
+      this.player.x - 38,
+      playerY - 7.5,
+      playerBarWidth,
+      8, // Made bar smaller
+      5
     );
-    
+
     // Update enemy health bar border position
     this.enemyHealthBarBorder = this.gameScene.add.graphics();
     this.enemyHealthBarBorder.fillStyle(0x000000, 0.8);
     this.enemyHealthBarBorder.fillRoundedRect(
-      this.enemy.x - 62, 
-      enemyY - 9.5, 
-      124, 
-      19, 
-      8
+      this.enemy.x - 40,
+      enemyY - 9.5,
+      80, // Made bar smaller
+      12, // Made bar smaller
+      6
     );
-    
+
     // Update enemy health bar
     this.enemyHealthBar = this.gameScene.add.graphics();
     this.enemyHealthBar.fillStyle(0xff9999, 1);
-    const enemyBarWidth = 120 * (this.enemyHealth / this.enemyMaxHealth);
+    const enemyBarWidth = 76 * (this.enemyHealth / this.enemyMaxHealth); // Adjusted width
     this.enemyHealthBar.fillRoundedRect(
-      this.enemy.x - 60, 
-      enemyY - 7.5, 
-      enemyBarWidth, 
-      15, 
-      7
+      this.enemy.x - 38,
+      enemyY - 7.5,
+      enemyBarWidth,
+      8, // Made bar smaller
+      5
     );
   }
-  
+
   updateHealthBars() {
-    // Get current positions
-    const playerY = this.player.y - 70;
-    const enemyY = this.enemy.y - 70;
-    
+    // Position health bars above characters
+    const playerY = this.player.y + 70; // Moved up closer to character
+    const enemyY = this.enemy.y + 70; // Moved up closer to character
+
     // Update player health bar border position
     this.playerHealthBarBorder.clear();
     this.playerHealthBarBorder.fillStyle(0x000000, 0.8);
     this.playerHealthBarBorder.fillRoundedRect(
-      this.player.x - 62, 
-      playerY - 9.5, 
-      124, 
-      19, 
-      8
+      this.player.x - 40,
+      playerY - 9.5,
+      80, // Made bar smaller
+      12, // Made bar smaller
+      6
     );
-    
+
     // Update player health bar
     this.playerHealthBar.clear();
     this.playerHealthBar.fillStyle(0x66ccff, 1);
-    const playerBarWidth = 120 * (this.playerHealth / this.playerMaxHealth);
+    const playerBarWidth = 76 * (this.playerHealth / this.playerMaxHealth); // Adjusted width
     this.playerHealthBar.fillRoundedRect(
-      this.player.x - 60, 
-      playerY - 7.5, 
-      playerBarWidth, 
-      15, 
-      7
+      this.player.x - 38,
+      playerY - 7.5,
+      playerBarWidth,
+      8, // Made bar smaller
+      5
     );
-    
+
     // Update enemy health bar border position
     this.enemyHealthBarBorder.clear();
     this.enemyHealthBarBorder.fillStyle(0x000000, 0.8);
     this.enemyHealthBarBorder.fillRoundedRect(
-      this.enemy.x - 62, 
-      enemyY - 9.5, 
-      124, 
-      19, 
-      8
+      this.enemy.x - 40,
+      enemyY - 9.5,
+      80, // Made bar smaller
+      12, // Made bar smaller
+      6
     );
-    
+
     // Update enemy health bar
     this.enemyHealthBar.clear();
     this.enemyHealthBar.fillStyle(0xff9999, 1);
-    const enemyBarWidth = 120 * (this.enemyHealth / this.enemyMaxHealth);
+    const enemyBarWidth = 76 * (this.enemyHealth / this.enemyMaxHealth); // Adjusted width
     this.enemyHealthBar.fillRoundedRect(
-      this.enemy.x - 60, 
-      enemyY - 7.5, 
-      enemyBarWidth, 
-      15, 
-      7
+      this.enemy.x - 38,
+      enemyY - 7.5,
+      enemyBarWidth,
+      8, // Made bar smaller
+      5
     );
   }
-  
+
   playerAttack(damage = 20) {
     if (this.attackAnimationPlaying) return false;
     this.attackAnimationPlaying = true;
-    
+
     // Play attack animation
     this.player.anims.play('hero_attack', true);
-    
+
     // Create attack effect sprite
     const attackEffect = this.gameScene.physics.add.sprite(
-      this.enemy.x - 20, 
-      this.enemy.y, 
+      this.enemy.x - 20,
+      this.enemy.y,
       'attack_effect'
     );
     attackEffect.setScale(5.0); // Make effect bigger
-    
+
     // Delay the effect to match the animation
     setTimeout(() => {
       // Play attack effect animation
       attackEffect.anims.play('attack_effect', true);
-      
+
       // Reduce enemy health
       this.enemyHealth = Math.max(0, this.enemyHealth - damage);
-      
+
       // Update enemy health bar
       this.updateHealthBars();
-      
+
       // Show damage text
       if (this.damageText) this.damageText.destroy();
-      this.damageText = this.gameScene.add.text(this.enemy.x, this.enemy.y - 50, `-${damage}`, { 
-        fontSize: '24px', 
+      this.damageText = this.gameScene.add.text(this.enemy.x, this.enemy.y - 50, `-${damage}`, {
+        fontSize: '24px',
         fill: '#ff6666',
         fontFamily: '"Press Start 2P", cursive',
         stroke: '#000',
         strokeThickness: 4
       }).setOrigin(0.5);
-      
+
       // Fade out damage text
       this.gameScene.tweens.add({
         targets: this.damageText,
@@ -560,28 +535,28 @@ export default class GameEngine {
           if (this.damageText) this.damageText.destroy();
         }
       });
-      
+
       // Enemy hit animation
       this.enemy.anims.play('goblin_hit', true);
-      
+
       // Enemy hit effect
       const hitEffect = this.gameScene.physics.add.sprite(
-        this.enemy.x, 
-        this.enemy.y, 
+        this.enemy.x,
+        this.enemy.y,
         'hit_effect'
       );
       hitEffect.setScale(5.0); // Make effect bigger
       hitEffect.anims.play('hit_effect', true);
-      
+
       // Clean up effects after animation completes
       attackEffect.on('animationcomplete', () => {
         attackEffect.destroy();
       });
-      
+
       hitEffect.on('animationcomplete', () => {
         hitEffect.destroy();
       });
-      
+
       // Return to idle state after delay
       setTimeout(() => {
         this.player.anims.play('hero_idle', true);
@@ -589,46 +564,46 @@ export default class GameEngine {
         this.attackAnimationPlaying = false;
       }, 1200); // Longer delay
     }, 300); // Delay before effect appears
-    
+
     return this.enemyHealth <= 0;
   }
-  
+
   enemyAttack(damage = 10) {
     if (this.attackAnimationPlaying) return false;
     this.attackAnimationPlaying = true;
-    
+
     // Play enemy attack animation
     this.enemy.anims.play('goblin_attack', true);
-    
+
     // Delay the effect to match the animation
     setTimeout(() => {
       // Create attack effect sprite
       const attackEffect = this.gameScene.physics.add.sprite(
-        this.player.x + 20, 
-        this.player.y, 
+        this.player.x + 20,
+        this.player.y,
         'attack_effect'
       );
       attackEffect.setScale(5.0); // Make effect bigger
       attackEffect.flipX = true; // Flip for enemy attack direction
-      
+
       // Play attack effect animation
       attackEffect.anims.play('attack_effect', true);
-      
+
       // Reduce player health
       this.playerHealth = Math.max(0, this.playerHealth - damage);
-      
+
       // Update player health bar
       this.updateHealthBars();
-      
+
       // Show damage text
-      const damageText = this.gameScene.add.text(this.player.x, this.player.y - 50, `-${damage}`, { 
-        fontSize: '24px', 
+      const damageText = this.gameScene.add.text(this.player.x, this.player.y - 50, `-${damage}`, {
+        fontSize: '24px',
         fill: '#ff6666',
         fontFamily: '"Press Start 2P", cursive',
         stroke: '#000',
         strokeThickness: 4
       }).setOrigin(0.5);
-      
+
       // Fade out damage text
       this.gameScene.tweens.add({
         targets: damageText,
@@ -639,28 +614,28 @@ export default class GameEngine {
           damageText.destroy();
         }
       });
-      
+
       // Player hit animation
       this.player.anims.play('hero_hit', true);
-      
+
       // Player hit effect
       const hitEffect = this.gameScene.physics.add.sprite(
-        this.player.x, 
-        this.player.y, 
+        this.player.x,
+        this.player.y,
         'hit_effect'
       );
       hitEffect.setScale(5.0); // Make effect bigger
       hitEffect.anims.play('hit_effect', true);
-      
+
       // Clean up effects after animation completes
       attackEffect.on('animationcomplete', () => {
         attackEffect.destroy();
       });
-      
+
       hitEffect.on('animationcomplete', () => {
         hitEffect.destroy();
       });
-      
+
       // Return to idle state after delay
       setTimeout(() => {
         this.player.anims.play('hero_idle', true);
@@ -668,50 +643,50 @@ export default class GameEngine {
         this.attackAnimationPlaying = false;
       }, 1200); // Longer delay
     }, 300); // Delay before effect appears
-    
+
     return this.playerHealth <= 0;
   }
-  
+
   addXP(points) {
     this.xpPoints += points;
     this.xpText.setText(`XP: ${this.xpPoints}`);
-    
+
     // Check for level up (simple formula: 100 XP per level)
     const newLevel = Math.floor(this.xpPoints / 100) + 1;
     if (newLevel > this.currentLevel) {
       this.levelUp(newLevel);
     }
   }
-  
+
   levelUp(newLevel) {
     this.currentLevel = newLevel;
     this.levelText.setText(`Level: ${this.currentLevel}`);
-    
+
     // Create level up effect sprite
     const levelUpEffect = this.gameScene.physics.add.sprite(
-      this.player.x, 
-      this.player.y, 
+      this.player.x,
+      this.player.y,
       'level_up'
     );
     levelUpEffect.setScale(6.0); // Make effect bigger
     levelUpEffect.anims.play('level_up_effect', true);
-    
+
     // Increase player max health
     this.playerMaxHealth += 20;
     this.playerHealth = this.playerMaxHealth;
-    
+
     // Update health bar
     this.updateHealthBars();
-    
+
     // Show level up text
-    const levelUpText = this.gameScene.add.text(this.player.x, this.player.y - 70, 'LEVEL UP!', { 
-      fontSize: '28px', 
+    const levelUpText = this.gameScene.add.text(this.player.x, this.player.y - 70, 'LEVEL UP!', {
+      fontSize: '28px',
       fill: '#ffff00',
       fontFamily: '"Press Start 2P", cursive',
       stroke: '#000',
       strokeThickness: 4
     }).setOrigin(0.5);
-    
+
     // Animate level up text
     this.gameScene.tweens.add({
       targets: levelUpText,
@@ -723,37 +698,37 @@ export default class GameEngine {
         levelUpText.destroy();
       }
     });
-    
+
     // Clean up level up effect after animation completes
     levelUpEffect.on('animationcomplete', () => {
       levelUpEffect.destroy();
-      
+
       // Change enemy to a scarier one
       this.createEnemy();
       this.enemyHealth = this.enemyMaxHealth;
-      
+
       // Recreate health bars for the new enemy position
       this.createHealthBars();
     });
   }
-  
+
   resetEnemy() {
     this.enemyHealth = this.enemyMaxHealth;
     this.updateHealthBars();
   }
-  
+
   gameOver() {
     const gameWidth = this.game.config.width;
     const gameHeight = this.game.config.height;
-    
-    const gameOverText = this.gameScene.add.text(gameWidth/2, gameHeight/2, 'GAME OVER', { 
-      fontSize: '48px', 
+
+    const gameOverText = this.gameScene.add.text(gameWidth / 2, gameHeight / 2, 'GAME OVER', {
+      fontSize: '48px',
       fill: '#ff6666',
       fontFamily: '"Press Start 2P", cursive',
       stroke: '#000',
       strokeThickness: 6
     }).setOrigin(0.5);
-    
+
     // Animate game over text
     this.gameScene.tweens.add({
       targets: gameOverText,

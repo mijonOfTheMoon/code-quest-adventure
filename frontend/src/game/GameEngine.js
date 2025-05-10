@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 
+// Import game configuration
+import { enemyConfig, playerConfig, gameProgressionConfig } from '../config/gameConfig';
+
 // Import hero character spritesheet
 import heroSpritesheet from '../assets/platformer/herochar sprites(new)/herochar_idle_anim_strip_4.png';
-import enemySpritesheet from '../assets/platformer/enemies sprites/goblin/goblin_idle_anim_strip_4.png';
 import heroAttackSpritesheet from '../assets/platformer/herochar sprites(new)/herochar_attack_anim_strip_4(new).png';
 import heroHitSpritesheet from '../assets/platformer/herochar sprites(new)/herochar_hit_anim_strip_3.png';
-import goblinAttackSpritesheet from '../assets/platformer/enemies sprites/goblin/goblin_attack_anim_strip_4.png';
-import goblinHitSpritesheet from '../assets/platformer/enemies sprites/goblin/goblin_hit_anim_strip_3.png';
 import background from '../assets/platformer/tiles and background_foreground (new)/background.png';
 import attackEffect from '../assets/platformer/herochar sprites(new)/sword_effect_strip_4(new).png';
 import hitEffect from '../assets/platformer/herochar sprites(new)/hit_sparkle_anim_strip_4.png';
@@ -24,9 +24,9 @@ export default class GameEngine {
     this.game = null;
     this.player = null;
     this.enemy = null;
-    this.playerHealth = 100;
+    this.playerHealth = playerConfig.baseHealth;
     this.enemyHealth = 100;
-    this.playerMaxHealth = 100;
+    this.playerMaxHealth = playerConfig.baseHealth;
     this.enemyMaxHealth = 100;
     this.playerHealthBar = null;
     this.playerHealthBarBorder = null;
@@ -37,18 +37,13 @@ export default class GameEngine {
     this.damageText = null;
     this.levelText = null;
     this.currentLevel = 1;
-    this.xpPoints = 0;
+    this.xpPoints = playerConfig.baseXP;
     this.xpText = null;
     this.levelUpEffect = null;
     this.gameScene = null;
     this.attackAnimationPlaying = false;
-    this.enemyTypes = [
-      { key: 'goblin', scale: 2.0, offsetY: 0, frameStart: 0, frameEnd: 3 },
-      { key: 'slime', scale: 2.0, offsetY: 0, frameStart: 0, frameEnd: 4 },
-      { key: 'mushroom', scale: 2.0, offsetY: 0, frameStart: 0, frameEnd: 7 },
-      { key: 'fly', scale: 2.0, offsetY: 0, frameStart: 0, frameEnd: 2 },
-      { key: 'worm', scale: 2.0, offsetY: 0, frameStart: 0, frameEnd: 5 }
-    ];
+    this.enemiesDefeated = 0;
+    this.currentEnemyConfig = null;
   }
 
   init() {
@@ -94,20 +89,25 @@ export default class GameEngine {
       frameHeight: 16
     });
 
-    this.gameScene.load.spritesheet('goblin_idle', enemySpritesheet, {
-      frameWidth: 16,
-      frameHeight: 16
-    });
+    // Load enemy assets for all levels
+    for (let level = 1; level <= 4; level++) {
+      const enemy = enemyConfig[level];
+      
+      this.gameScene.load.spritesheet(`enemy_idle_${level}`, enemy.sprites.idle, {
+        frameWidth: 16,
+        frameHeight: 16
+      });
 
-    this.gameScene.load.spritesheet('goblin_attack', goblinAttackSpritesheet, {
-      frameWidth: 16,
-      frameHeight: 16
-    });
+      this.gameScene.load.spritesheet(`enemy_attack_${level}`, enemy.sprites.attack, {
+        frameWidth: 16,
+        frameHeight: 16
+      });
 
-    this.gameScene.load.spritesheet('goblin_hit', goblinHitSpritesheet, {
-      frameWidth: 16,
-      frameHeight: 16
-    });
+      this.gameScene.load.spritesheet(`enemy_hit_${level}`, enemy.sprites.hit, {
+        frameWidth: 16,
+        frameHeight: 16
+      });
+    }
 
     this.gameScene.load.spritesheet('attack_effect', attackEffect, {
       frameWidth: 16,
@@ -123,7 +123,6 @@ export default class GameEngine {
       frameWidth: 16,
       frameHeight: 16
     });
-
 
     // Load environment props
     this.gameScene.load.image('grass', grassProps);
@@ -150,7 +149,7 @@ export default class GameEngine {
     // Create player animations
     this.createPlayerAnimations();
 
-    // Create enemy animations
+    // Create enemy animations for all levels
     this.createEnemyAnimations();
 
     // Create effect animations
@@ -159,6 +158,9 @@ export default class GameEngine {
     // Create player (hero)
     this.player = this.gameScene.physics.add.sprite(gameWidth * 0.25, gameHeight * 0.6, 'hero_idle');
     this.player.setScale(5.0); // Make the player bigger
+
+    // Set current enemy config based on level
+    this.currentEnemyConfig = enemyConfig[this.currentLevel];
 
     // Create enemy based on current level
     this.createEnemy();
@@ -185,7 +187,7 @@ export default class GameEngine {
 
     // Play idle animations
     this.player.anims.play('hero_idle', true);
-    this.enemy.anims.play('goblin_idle', true);
+    this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
 
     // Notify that game is ready
     if (this.onGameReady) {
@@ -285,29 +287,43 @@ export default class GameEngine {
   }
 
   createEnemyAnimations() {
-    // Goblin idle animation
-    this.gameScene.anims.create({
-      key: 'goblin_idle',
-      frames: this.gameScene.anims.generateFrameNumbers('goblin_idle', { start: 0, end: 3 }),
-      frameRate: 5, // Slower animation
-      repeat: -1
-    });
+    // Create animations for each enemy type
+    for (let level = 1; level <= 4; level++) {
+      const enemy = enemyConfig[level];
+      
+      // Idle animation
+      this.gameScene.anims.create({
+        key: `enemy_idle_${level}`,
+        frames: this.gameScene.anims.generateFrameNumbers(`enemy_idle_${level}`, { 
+          start: enemy.animation.idle.frameStart, 
+          end: enemy.animation.idle.frameEnd 
+        }),
+        frameRate: enemy.animation.idle.frameRate,
+        repeat: -1
+      });
 
-    // Goblin attack animation
-    this.gameScene.anims.create({
-      key: 'goblin_attack',
-      frames: this.gameScene.anims.generateFrameNumbers('goblin_attack', { start: 0, end: 3 }),
-      frameRate: 8,
-      repeat: 0
-    });
+      // Attack animation
+      this.gameScene.anims.create({
+        key: `enemy_attack_${level}`,
+        frames: this.gameScene.anims.generateFrameNumbers(`enemy_attack_${level}`, { 
+          start: enemy.animation.attack.frameStart, 
+          end: enemy.animation.attack.frameEnd 
+        }),
+        frameRate: enemy.animation.attack.frameRate,
+        repeat: 0
+      });
 
-    // Goblin hit animation
-    this.gameScene.anims.create({
-      key: 'goblin_hit',
-      frames: this.gameScene.anims.generateFrameNumbers('goblin_hit', { start: 0, end: 2 }),
-      frameRate: 8,
-      repeat: 0
-    });
+      // Hit animation
+      this.gameScene.anims.create({
+        key: `enemy_hit_${level}`,
+        frames: this.gameScene.anims.generateFrameNumbers(`enemy_hit_${level}`, { 
+          start: enemy.animation.hit.frameStart, 
+          end: enemy.animation.hit.frameEnd 
+        }),
+        frameRate: enemy.animation.hit.frameRate,
+        repeat: 0
+      });
+    }
   }
 
   createEffectAnimations() {
@@ -341,9 +357,12 @@ export default class GameEngine {
     const gameWidth = this.game.config.width;
     const gameHeight = this.game.config.height;
 
-    // Determine enemy type based on level
-    const enemyIndex = Math.min(this.currentLevel - 1, this.enemyTypes.length - 1);
-    const enemyType = this.enemyTypes[enemyIndex];
+    // Get enemy configuration for current level
+    this.currentEnemyConfig = enemyConfig[this.currentLevel];
+    
+    // Set enemy health based on configuration
+    this.enemyMaxHealth = this.currentEnemyConfig.health;
+    this.enemyHealth = this.enemyMaxHealth;
 
     // Remove previous enemy if it exists
     if (this.enemy) {
@@ -351,21 +370,25 @@ export default class GameEngine {
     }
 
     // Create new enemy
-    this.enemy = this.gameScene.physics.add.sprite(gameWidth * 0.75, gameHeight * 0.6, 'goblin_idle');
-    this.enemy.setScale(4.0); // Make the enemy bigger
-    this.enemy.flipX = true; // Make sure enemy is facing left
-
-    // Apply tint based on level (gets redder/darker with higher levels)
-    const baseTint = 0xffaaaa;
-    const darkenFactor = Math.max(0, Math.min(0.4, (this.currentLevel - 1) * 0.1));
-    const r = Math.floor(0xff * (1 - darkenFactor));
-    const g = Math.floor(0xaa * (1 - darkenFactor));
-    const b = Math.floor(0xaa * (1 - darkenFactor));
-    const tint = (r << 16) | (g << 8) | b;
-    this.enemy.setTint(tint);
+    this.enemy = this.gameScene.physics.add.sprite(
+      gameWidth * 0.75, 
+      gameHeight * 0.6, 
+      `enemy_idle_${this.currentLevel}`
+    );
+    
+    // Apply scale from config
+    this.enemy.setScale(this.currentEnemyConfig.scale);
+    
+    // Make sure enemy is facing left
+    this.enemy.flipX = true;
+    
+    // Apply tint if specified
+    if (this.currentEnemyConfig.tint) {
+      this.enemy.setTint(this.currentEnemyConfig.tint);
+    }
 
     // Play idle animation
-    this.enemy.anims.play('goblin_idle', true);
+    this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
   }
 
   update() {
@@ -489,9 +512,12 @@ export default class GameEngine {
     );
   }
 
-  playerAttack(damage = 20) {
+  playerAttack() {
     if (this.attackAnimationPlaying) return false;
     this.attackAnimationPlaying = true;
+
+    // Get damage value from current enemy config
+    const damage = this.currentEnemyConfig.playerDamage;
 
     // Play attack animation
     this.player.anims.play('hero_attack', true);
@@ -537,7 +563,7 @@ export default class GameEngine {
       });
 
       // Enemy hit animation
-      this.enemy.anims.play('goblin_hit', true);
+      this.enemy.anims.play(`enemy_hit_${this.currentLevel}`, true);
 
       // Enemy hit effect
       const hitEffect = this.gameScene.physics.add.sprite(
@@ -560,20 +586,59 @@ export default class GameEngine {
       // Return to idle state after delay
       setTimeout(() => {
         this.player.anims.play('hero_idle', true);
-        this.enemy.anims.play('goblin_idle', true);
+        this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
         this.attackAnimationPlaying = false;
       }, 1200); // Longer delay
     }, 300); // Delay before effect appears
 
-    return this.enemyHealth <= 0;
+    // Check if enemy is defeated
+    const enemyDefeated = this.enemyHealth <= 0;
+    
+    // If enemy is defeated, increment counter
+    if (enemyDefeated) {
+      this.enemiesDefeated++;
+      
+      // Add XP for defeating enemy
+      this.addXP(playerConfig.xpPerCorrectAnswer);
+      
+      // Check if player should level up based on enemies defeated
+      if (this.enemiesDefeated >= gameProgressionConfig.enemiesToDefeat[this.currentLevel]) {
+        // Only level up if not at max level
+        if (this.currentLevel < 4) {
+          this.currentLevel++;
+          this.enemiesDefeated = 0;
+          
+          // Update player health for new level
+          this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
+          this.playerHealth = this.playerMaxHealth;
+          
+          // Create new enemy for next level
+          setTimeout(() => {
+            this.createEnemy();
+            this.createHealthBars();
+          }, gameProgressionConfig.levelUpDelay);
+        }
+      } else {
+        // Create new enemy of same level
+        setTimeout(() => {
+          this.createEnemy();
+          this.createHealthBars();
+        }, gameProgressionConfig.enemyDefeatDelay);
+      }
+    }
+    
+    return enemyDefeated;
   }
 
-  enemyAttack(damage = 10) {
+  enemyAttack() {
     if (this.attackAnimationPlaying) return false;
     this.attackAnimationPlaying = true;
 
+    // Get damage value from current enemy config
+    const damage = this.currentEnemyConfig.damage;
+
     // Play enemy attack animation
-    this.enemy.anims.play('goblin_attack', true);
+    this.enemy.anims.play(`enemy_attack_${this.currentLevel}`, true);
 
     // Delay the effect to match the animation
     setTimeout(() => {
@@ -639,11 +704,12 @@ export default class GameEngine {
       // Return to idle state after delay
       setTimeout(() => {
         this.player.anims.play('hero_idle', true);
-        this.enemy.anims.play('goblin_idle', true);
+        this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
         this.attackAnimationPlaying = false;
       }, 1200); // Longer delay
     }, 300); // Delay before effect appears
 
+    // Check if player is defeated
     return this.playerHealth <= 0;
   }
 
@@ -651,15 +717,16 @@ export default class GameEngine {
     this.xpPoints += points;
     this.xpText.setText(`XP: ${this.xpPoints}`);
 
-    // Check for level up (simple formula: 100 XP per level)
-    const newLevel = Math.floor(this.xpPoints / 100) + 1;
-    if (newLevel > this.currentLevel) {
-      this.levelUp(newLevel);
+    // Check for level up (based on XP threshold)
+    const xpThreshold = playerConfig.xpToLevelUp;
+    if (this.xpPoints >= xpThreshold && this.currentLevel < 4) {
+      this.levelUp();
     }
   }
 
-  levelUp(newLevel) {
-    this.currentLevel = newLevel;
+  levelUp() {
+    // Increment level
+    this.currentLevel = Math.min(4, this.currentLevel + 1);
     this.levelText.setText(`Level: ${this.currentLevel}`);
 
     // Create level up effect sprite
@@ -671,8 +738,8 @@ export default class GameEngine {
     levelUpEffect.setScale(6.0); // Make effect bigger
     levelUpEffect.anims.play('level_up_effect', true);
 
-    // Increase player max health
-    this.playerMaxHealth += 20;
+    // Update player health based on new level
+    this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
     this.playerHealth = this.playerMaxHealth;
 
     // Update health bar
@@ -703,18 +770,56 @@ export default class GameEngine {
     levelUpEffect.on('animationcomplete', () => {
       levelUpEffect.destroy();
 
-      // Change enemy to a scarier one
-      this.createEnemy();
-      this.enemyHealth = this.enemyMaxHealth;
+      // Reset enemies defeated counter
+      this.enemiesDefeated = 0;
 
-      // Recreate health bars for the new enemy position
+      // Update enemy config for new level
+      this.currentEnemyConfig = enemyConfig[this.currentLevel];
+
+      // Create new enemy for the new level
+      this.createEnemy();
+      
+      // Update health bars for the new enemy
       this.createHealthBars();
     });
   }
 
   resetEnemy() {
+    // Reset enemy health to max
     this.enemyHealth = this.enemyMaxHealth;
+    
+    // Update health bars
     this.updateHealthBars();
+  }
+
+  getCurrentLevel() {
+    return this.currentLevel;
+  }
+
+  getEnemyName() {
+    return this.currentEnemyConfig.name;
+  }
+
+  getEnemyHealth() {
+    return {
+      current: this.enemyHealth,
+      max: this.enemyMaxHealth
+    };
+  }
+
+  getPlayerHealth() {
+    return {
+      current: this.playerHealth,
+      max: this.playerMaxHealth
+    };
+  }
+
+  getEnemiesDefeated() {
+    return this.enemiesDefeated;
+  }
+
+  getEnemiesNeededToLevelUp() {
+    return gameProgressionConfig.enemiesToDefeat[this.currentLevel];
   }
 
   gameOver() {

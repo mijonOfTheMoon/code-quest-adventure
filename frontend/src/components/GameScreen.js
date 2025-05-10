@@ -457,8 +457,8 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       nextChallengeRef.current = nextChallenge;
       
       // Trigger another background preload if cache is getting low
-      if (getCachedChallengeCount() < 3 && !isPreloadingChallenges()) {
-        preloadChallenges(level, language, 5);
+      if (getCachedChallengeCount() < 2 && !isPreloadingChallenges()) {
+        preloadChallenges(level, language, 2);
       }
     } catch (error) {
       console.error('Error loading next challenge:', error);

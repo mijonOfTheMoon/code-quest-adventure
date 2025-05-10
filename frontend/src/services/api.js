@@ -38,7 +38,7 @@ export const getChallenge = async (level, language) => {
   }
 };
 
-export const preloadChallenges = async (level, language, count = 8) => {
+export const preloadChallenges = async (level, language, count = 6) => {
   // Don't start another preload if one is already in progress
   if (challengeCache.isLoading) return;
   

@@ -31,7 +31,7 @@ const App = () => {
       setLoadingProgress(95);
       
       // Start preloading additional challenges in the background
-      preloadChallenges(level, selectedLanguage, 8);
+      preloadChallenges(level, selectedLanguage, 6);
       
       // Short delay for smooth transition
       setTimeout(() => {

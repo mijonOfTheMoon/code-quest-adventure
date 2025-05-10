@@ -90,7 +90,7 @@ export default class GameEngine {
     });
 
     // Load enemy assets for all levels
-    for (let level = 1; level <= 4; level++) {
+    for (let level = 1; level <= 3; level++) {
       const enemy = enemyConfig[level];
       
       this.gameScene.load.spritesheet(`enemy_idle_${level}`, enemy.sprites.idle, {
@@ -288,7 +288,7 @@ export default class GameEngine {
 
   createEnemyAnimations() {
     // Create animations for each enemy type
-    for (let level = 1; level <= 4; level++) {
+    for (let level = 1; level <= 3; level++) {
       const enemy = enemyConfig[level];
       
       // Idle animation
@@ -606,7 +606,7 @@ export default class GameEngine {
         
         // Add congratulations text
         let congratsText;
-        if (this.currentLevel === 4) {
+        if (this.currentLevel === 3) {
           // Final boss defeated
           congratsText = this.gameScene.add.text(0, -80, 'VICTORY!', {
             fontSize: '32px',
@@ -690,7 +690,7 @@ export default class GameEngine {
             loadingContainer.add(loadingText);
             
             // Increment level
-            this.currentLevel = Math.min(4, this.currentLevel + 1);
+            this.currentLevel = Math.min(3, this.currentLevel + 1);
             
             // Update player health for new level
             this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
@@ -901,14 +901,14 @@ export default class GameEngine {
 
     // Check for level up (based on XP threshold)
     const xpThreshold = playerConfig.xpToLevelUp;
-    if (this.xpPoints >= xpThreshold && this.currentLevel < 4) {
+    if (this.xpPoints >= xpThreshold && this.currentLevel < 3) {
       this.levelUp();
     }
   }
 
   levelUp() {
     // Increment level
-    this.currentLevel = Math.min(4, this.currentLevel + 1);
+    this.currentLevel = Math.min(3, this.currentLevel + 1);
     this.levelText.setText(`Level: ${this.currentLevel}`);
 
     // Create level up effect sprite

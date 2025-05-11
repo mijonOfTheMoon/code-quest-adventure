@@ -18,6 +18,13 @@ export const getStory = async (level) => {
     const response = await axios.get(`${API_URL}/story`, {
       params: { level }
     });
+    
+    // Store the objective for this level when we get a story
+    if (response.data && response.data.objective) {
+      levelObjectives[level] = response.data.objective;
+      console.log(`Stored objective from story for level ${level}: ${response.data.objective}`);
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching story:', error);
@@ -25,11 +32,40 @@ export const getStory = async (level) => {
   }
 };
 
-export const getChallenge = async (level, language) => {
+// Store objectives by level to maintain consistency
+const levelObjectives = {
+  1: null,
+  2: null,
+  3: null
+};
+
+// Function to get the stored objective for a level
+export const getStoredObjective = (level) => {
+  const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
+  return levelObjectives[validLevel];
+};
+
+export const getChallenge = async (level, language, objective) => {
   try {
     // Ensure level is a number and within valid range
     const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
     console.log(`Getting challenge for level: ${validLevel}`);
+    
+    // If objective is provided, store it for this level
+    if (objective) {
+      levelObjectives[validLevel] = objective;
+      console.log(`Storing objective for level ${validLevel}: ${objective}`);
+    }
+    // If no objective provided, use the stored one for this level
+    else if (levelObjectives[validLevel]) {
+      objective = levelObjectives[validLevel];
+      console.log(`Using stored objective for level ${validLevel}: ${objective}`);
+    }
+    // If still no objective, this is an error - we should always have an objective
+    else {
+      console.error(`No objective available for level ${validLevel}`);
+      throw new Error(`No objective available for level ${validLevel}`);
+    }
     
     // Check if we have a cached challenge for this level
     if (challengeCache.items[validLevel] && challengeCache.items[validLevel].length > 0) {
@@ -44,8 +80,9 @@ export const getChallenge = async (level, language) => {
     // Add this token to our active requests array
     challengeCache.activeRequests.push(cancelTokenSource);
     
+    console.log(`Requesting challenge with objective: ${objective}`);
     const response = await axios.get(`${API_URL}/challenge`, {
-      params: { level: validLevel, language },
+      params: { level: validLevel, language, objective },
       cancelToken: cancelTokenSource.token
     });
     
@@ -68,7 +105,7 @@ export const getChallenge = async (level, language) => {
   }
 };
 
-export const preloadChallenges = async (level, language, count = 6) => {
+export const preloadChallenges = async (level, language, count = 2, objective) => {
   // Don't start another preload if one is already in progress
   if (challengeCache.isLoading) return;
   
@@ -78,6 +115,22 @@ export const preloadChallenges = async (level, language, count = 6) => {
     // Ensure level is a number and within valid range
     const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
     console.log(`Preloading ${count} challenges for level: ${validLevel}`);
+    
+    // If objective is provided, store it for this level
+    if (objective) {
+      levelObjectives[validLevel] = objective;
+      console.log(`Storing objective for level ${validLevel}: ${objective}`);
+    }
+    // If no objective provided, use the stored one for this level
+    else if (levelObjectives[validLevel]) {
+      objective = levelObjectives[validLevel];
+      console.log(`Using stored objective for level ${validLevel}: ${objective}`);
+    }
+    // If still no objective, this is an error - we should always have an objective
+    else {
+      console.error(`No objective available for preloading level ${validLevel}`);
+      throw new Error(`No objective available for preloading level ${validLevel}`);
+    }
     
     // Initialize the array for this level if it doesn't exist
     if (!challengeCache.items[validLevel]) {
@@ -93,8 +146,9 @@ export const preloadChallenges = async (level, language, count = 6) => {
       challengeCache.activeRequests.push(cancelTokenSource);
       
       try {
+        console.log(`Preloading challenge ${i+1} with objective: ${objective}`);
         const response = await axios.get(`${API_URL}/challenge`, {
-          params: { level: validLevel, language },
+          params: { level: validLevel, language, objective },
           cancelToken: cancelTokenSource.token
         });
         

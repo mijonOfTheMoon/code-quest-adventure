@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import GameEngine from '../game/GameEngine';
 import { playerConfig, gameProgressionConfig } from '../config/gameConfig';
-import { getStory, getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges, flushPreloadedChallenges } from '../services/api';
+import { getStory, getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges, flushPreloadedChallenges, getStoredObjective } from '../services/api';
 import LoadingScreen from './LoadingScreen';
 
 const Container = styled.div`
@@ -393,8 +393,15 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       // Hide story loading indicator
       setStoryLoading(false);
 
-      // Fetch challenge
-      const challengeResponse = await getChallenge(level, language);
+      // Fetch challenge with objective from story - ensure objective exists
+      if (!storyResponse || !storyResponse.objective) {
+        console.error('Story response missing objective!', storyResponse);
+        throw new Error('Story response missing objective');
+      }
+      
+      // The objective is now stored in levelObjectives via getStory
+      console.log(`Using objective for challenge: ${storyResponse.objective}`);
+      const challengeResponse = await getChallenge(level, language, storyResponse.objective);
       setChallenge(challengeResponse);
 
       // Reset state for new challenge
@@ -419,7 +426,14 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
 
       // Start preloading more challenges in the background
       if (!isPreloadingChallenges()) {
-        preloadChallenges(level, language, 2);
+        // The objective is already stored in levelObjectives via getStory
+        const objective = getStoredObjective(level);
+        if (objective) {
+          console.log(`Preloading challenges with stored objective: ${objective}`);
+          preloadChallenges(level, language, 2, objective);
+        } else {
+          console.error('No stored objective found for preloading challenges!');
+        }
       }
     } catch (err) {
       setError('Failed to load game content. Please try again.');
@@ -492,7 +506,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       }
 
       // Start preloading challenges in the background
-      preloadChallenges(level, language, 2);
+      const objective = initialStory.objective;
+      preloadChallenges(level, language, 2, objective);
 
       return;
     }
@@ -539,7 +554,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
           }
 
           // Start preloading challenges in the background
-          preloadChallenges(level, language, 2);
+          const objective = storyData.objective;
+          preloadChallenges(level, language, 2, objective);
         }, 500);
       } catch (error) {
         setError('Failed to load challenge data. Please try again.');
@@ -584,12 +600,21 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
         (gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel);
 
       console.log(`Loading next challenge for level: ${currentLevel}`);
-      const nextChallenge = await getChallenge(currentLevel, language);
+      
+      // Get the stored objective for this level
+      const objective = getStoredObjective(currentLevel);
+      if (!objective) {
+        console.error('No stored objective found when loading next challenge!');
+        throw new Error('No stored objective found');
+      }
+      
+      console.log(`Using stored objective for next challenge: ${objective}`);
+      const nextChallenge = await getChallenge(currentLevel, language, objective);
       nextChallengeRef.current = nextChallenge;
 
       // Trigger another background preload if cache is getting low
       if (getCachedChallengeCount(currentLevel) < 1 && !isPreloadingChallenges()) {
-        preloadChallenges(currentLevel, language, 2);
+        preloadChallenges(currentLevel, language, 2, objective);
       }
     } catch (error) {
     } finally {
@@ -629,7 +654,15 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       // If no preloaded challenge, show loading state and fetch one
       setNextChallengeLoading(true);
       const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
-      getChallenge(currentLevel, language)
+      // Get the stored objective for this level
+      const objective = getStoredObjective(currentLevel);
+      if (!objective) {
+        console.error('No stored objective found when moving to next challenge!');
+        throw new Error('No stored objective found');
+      }
+      
+      console.log(`Using stored objective for next challenge: ${objective}`);
+      getChallenge(currentLevel, language, objective)
         .then(data => {
           setChallenge(data);
 

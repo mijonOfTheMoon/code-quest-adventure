@@ -315,9 +315,9 @@ def get_challenge():
             {{
                 "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION)",
                 "type": "{question_type}",
-                "code": "Source code that the question is about (required for all question types)",
+                "code": "Source code that the question is about (ONLY required for multiple-choice questions)",
                 "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only, EXACTLY 4 options),
-                "template": "Code template with _____ for blanks" (for fill-in-blank only),
+                "template": "Code template with _____ for blanks" (ONLY for fill-in-blank questions),
                 "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
                 "hint": "A helpful hint (under 50 words)",
                 "explanation": "Explanation of the solution (under 100 words)",
@@ -350,13 +350,13 @@ def get_challenge():
                         options = options[:4]
                     parsed_content["options"] = options
             
-            # Ensure code field exists
-            if "code" not in parsed_content:
-                # If no code field, use template or create a placeholder
-                if "template" in parsed_content:
-                    parsed_content["code"] = parsed_content["template"]
-                else:
-                    parsed_content["code"] = "// Code example will be shown here"
+            # Ensure code field exists for multiple-choice questions only
+            if parsed_content.get("type") == "multiple-choice" and "code" not in parsed_content:
+                parsed_content["code"] = "// Code example will be shown here"
+                
+            # For fill-in-blank questions, ensure template exists
+            if parsed_content.get("type") == "fill-in-blank" and "template" not in parsed_content:
+                parsed_content["template"] = "// Template example will be shown here"
             
             # Set XP reward based on level if not present
             if "xp_reward" not in parsed_content:
@@ -370,8 +370,16 @@ def get_challenge():
                 else:
                     parsed_content["xp_reward"] = 15
             
-            # Validate required fields
-            required_fields = ["question", "type", "code", "answer", "hint"]
+            # Validate required fields based on question type
+            required_fields = ["question", "type", "answer", "hint"]
+            
+            # Add type-specific required fields
+            if parsed_content.get("type") == "multiple-choice":
+                required_fields.append("code")
+                required_fields.append("options")
+            elif parsed_content.get("type") == "fill-in-blank":
+                required_fields.append("template")
+                
             missing_fields = [field for field in required_fields if field not in parsed_content]
             if missing_fields:
                 print(f"Challenge missing required fields: {', '.join(missing_fields)}")
@@ -408,7 +416,6 @@ def create_fallback_challenge(level, question_type, language):
         return {
             "question": f"Level {level} fallback question: Complete the code to calculate the sum and product of two numbers.",
             "type": "fill-in-blank",
-            "code": "a = 7\nb = 3\nsum_result = a + b\nproduct_result = a * b",
             "template": "a = 7\nb = 3\nsum_result = _____\nproduct_result = _____",
             "answer": "a + b, a * b",
             "hint": "Use the addition and multiplication operators.",

@@ -408,14 +408,18 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       setNextChallengeLoading(false);
 
       // Initialize blank answers array for fill-in-blank challenges
-      if (challengeResponse.type === 'fill-in-blank' && challengeResponse.template) {
-        const blankCount = (challengeResponse.template.match(/_____/g) || []).length;
-        setBlankAnswers(new Array(blankCount).fill(''));
+      if (challengeResponse.type === 'fill-in-blank') {
+        if (challengeResponse.template) {
+          const blankCount = (challengeResponse.template.match(/_____/g) || []).length;
+          setBlankAnswers(new Array(blankCount).fill(''));
+        } else {
+          console.warn('Fill-in-blank question missing template field');
+        }
       }
 
       // Start preloading more challenges in the background
       if (!isPreloadingChallenges()) {
-        preloadChallenges(level, language, 3);
+        preloadChallenges(level, language, 2);
       }
     } catch (err) {
       setError('Failed to load game content. Please try again.');
@@ -472,14 +476,18 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       }, 100);
 
       // Set template as initial value for fill-in-blank challenges
-      if (initialChallenge.type === 'fill-in-blank' && initialChallenge.template) {
-        // Initialize blank answers array based on number of blanks in template
-        const blankCount = (initialChallenge.template.match(/_____/g) || []).length;
-        setBlankAnswers(new Array(blankCount).fill(''));
+      if (initialChallenge.type === 'fill-in-blank') {
+        if (initialChallenge.template) {
+          // Initialize blank answers array based on number of blanks in template
+          const blankCount = (initialChallenge.template.match(/_____/g) || []).length;
+          setBlankAnswers(new Array(blankCount).fill(''));
+        } else {
+          console.warn('Fill-in-blank question missing template field');
+        }
       }
 
       // Start preloading challenges in the background
-      preloadChallenges(level, language, 3);
+      preloadChallenges(level, language, 2);
 
       return;
     }
@@ -501,10 +509,14 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
         setChallenge(data);
 
         // Set template as initial value for fill-in-blank challenges
-        if (data.type === 'fill-in-blank' && data.template) {
-          // Initialize blank answers array based on number of blanks in template
-          const blankCount = (data.template.match(/_____/g) || []).length;
-          setBlankAnswers(new Array(blankCount).fill(''));
+        if (data.type === 'fill-in-blank') {
+          if (data.template) {
+            // Initialize blank answers array based on number of blanks in template
+            const blankCount = (data.template.match(/_____/g) || []).length;
+            setBlankAnswers(new Array(blankCount).fill(''));
+          } else {
+            console.warn('Fill-in-blank question missing template field');
+          }
         }
 
         setLoadingProgress(80);
@@ -522,7 +534,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
           }
 
           // Start preloading challenges in the background
-          preloadChallenges(level, language, 3);
+          preloadChallenges(level, language, 2);
         }, 500);
       } catch (error) {
         setError('Failed to load challenge data. Please try again.');
@@ -595,10 +607,14 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       nextChallengeRef.current = null;
 
       // Set template as initial value for fill-in-blank challenges
-      if (nextChallenge.type === 'fill-in-blank' && nextChallenge.template) {
-        // Initialize blank answers array based on number of blanks in template
-        const blankCount = (nextChallenge.template.match(/_____/g) || []).length;
-        setBlankAnswers(new Array(blankCount).fill(''));
+      if (nextChallenge.type === 'fill-in-blank') {
+        if (nextChallenge.template) {
+          // Initialize blank answers array based on number of blanks in template
+          const blankCount = (nextChallenge.template.match(/_____/g) || []).length;
+          setBlankAnswers(new Array(blankCount).fill(''));
+        } else {
+          console.warn('Fill-in-blank question missing template field');
+        }
       }
 
       // Start loading the next challenge in the background
@@ -613,10 +629,14 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
           setChallenge(data);
 
           // Set template as initial value for fill-in-blank challenges
-          if (data.type === 'fill-in-blank' && data.template) {
-            // Initialize blank answers array based on number of blanks in template
-            const blankCount = (data.template.match(/_____/g) || []).length;
-            setBlankAnswers(new Array(blankCount).fill(''));
+          if (data.type === 'fill-in-blank') {
+            if (data.template) {
+              // Initialize blank answers array based on number of blanks in template
+              const blankCount = (data.template.match(/_____/g) || []).length;
+              setBlankAnswers(new Array(blankCount).fill(''));
+            } else {
+              console.warn('Fill-in-blank question missing template field');
+            }
           }
 
           setNextChallengeLoading(false);
@@ -884,8 +904,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
 
-              {/* Display code for all question types */}
-              {challenge.code && (
+              {/* Display code only for multiple-choice questions */}
+              {challenge.type === 'multiple-choice' && challenge.code && (
                 <CodeDisplay>
                   {challenge.code.toString().replace(/\\n/g, '\n')}
                 </CodeDisplay>

@@ -29,7 +29,7 @@ const GameArea = styled.div`
 `;
 
 const GameCanvas = styled.div`
-  height: 400px; /* Changed from 500px to 400px */
+  height: 340px; /* Changed from 500px to 340px */
   width: 100vw;
   position: relative;
   margin-left: calc(-50vw + 50%);
@@ -40,7 +40,7 @@ const ContentContainer = styled.div`
   display: flex;
   width: 100%;
   flex: 1;
-  height: calc(100vh - 400px - 20px); /* Full height minus game height and margins */
+  height: calc(100vh - 340px - 20px); /* Full height minus game height and margins */
 `;
 
 const FillInBlankContainer = styled.div`
@@ -79,12 +79,13 @@ const BlankInput = styled.input`
 `;
 
 const StoryContainer = styled.div`
-  flex: 1;
+  flex: 1.1;
   padding: 20px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 10px;
   margin: 10px;
   overflow-y: auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
   height: 100%; /* Take full height */
   display: flex;
   flex-direction: column;
@@ -121,7 +122,7 @@ const ChallengeContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%; /* Take full height */
-  overflow: hidden; /* Changed from auto to hidden */
+  overflow: hidden; /* Prevent overflow at container level */
   position: relative;
 `;
 
@@ -155,15 +156,13 @@ const CodeDisplay = styled.pre`
   color: rgb(237, 237, 237);
   white-space: pre-wrap;
   overflow-x: auto;
-  max-height: 200px;
-  overflow-y: auto;
+  height: auto; /* Allow natural height */
+  max-height: none; /* Remove max height restriction */
 `;
 
 const AnswerContainer = styled.div`
   display: flex;
   flex-direction: column;
-  flex: 1;
-  overflow-y: auto;
   padding-bottom: 80px; /* Space for the button container */
 `;
 
@@ -942,13 +941,6 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
 
-              {/* Display code only for multiple-choice questions */}
-              {challenge.type === 'multiple-choice' && challenge.code && (
-                <CodeDisplay>
-                  {challenge.code.toString().replace(/\\n/g, '\n')}
-                </CodeDisplay>
-              )}
-
               {nextChallengeLoading && (
                 <LoadingContainer>
                   <LoadingSpinner />
@@ -956,25 +948,35 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
                 </LoadingContainer>
               )}
 
-              <AnswerContainer>
-                {challenge.type === 'multiple-choice' ? (
-                  <div>
-                    {challenge.options && challenge.options.map((option, index) => (
-                      <OptionButton
-                        key={index}
-                        selected={selectedOption === option}
-                        onClick={() => handleOptionSelect(option)}
-                        disabled={submitDisabled}
-                      >
-                        {option}
-                      </OptionButton>
-                    ))}
-                  </div>
-                ) : (
-                  // Default to fill-in-blank for any other type
-                  renderFillInBlankTemplate(challenge.template)
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {/* Display code only for multiple-choice questions */}
+                {challenge.type === 'multiple-choice' && challenge.code && (
+                  <CodeDisplay>
+                    {challenge.code.toString().replace(/\\n/g, '\n')}
+                  </CodeDisplay>
                 )}
 
+                <AnswerContainer>
+                  {challenge.type === 'multiple-choice' ? (
+                    <div>
+                      {challenge.options && challenge.options.map((option, index) => (
+                        <OptionButton
+                          key={index}
+                          selected={selectedOption === option}
+                          onClick={() => handleOptionSelect(option)}
+                          disabled={submitDisabled}
+                        >
+                          {option}
+                        </OptionButton>
+                      ))}
+                    </div>
+                  ) : (
+                    // Default to fill-in-blank for any other type
+                    renderFillInBlankTemplate(challenge.template)
+                  )}
+
+                </AnswerContainer>
+                
                 <ButtonContainer>
                   <HintButton onClick={toggleHint} disabled={submitDisabled}>
                     {showHint ? 'Hide Hint' : 'Show Hint'}
@@ -987,7 +989,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
                     Submit Answer
                   </SubmitButton>
                 </ButtonContainer>
-              </AnswerContainer>
+              </div>
             </ChallengeContainer>
           </ContentContainer>
         </GameArea>

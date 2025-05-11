@@ -57,7 +57,7 @@ export default class GameEngine {
       type: Phaser.AUTO,
       parent: this.containerId,
       width: window.innerWidth,
-      height: 400, // Changed from 500 to 400
+      height: 340, // Changed from 500 to 340
       transparent: true,
       scene: {
         preload: this.preload.bind(this),

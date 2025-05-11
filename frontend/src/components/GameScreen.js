@@ -278,10 +278,17 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 20;
   color: #f5b70a;
   font-family: 'Press Start 2P', cursive;
   font-size: 14px;
+  backdrop-filter: blur(3px);
   
   p {
     margin-top: 15px;
@@ -352,34 +359,34 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     try {
       // Show loading animation
       setNextChallengeLoading(true);
-      
+
       // Get current level from game engine or use state
       const level = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
-      
+
       // Fetch story based on current level
       const storyResponse = await getStory(level);
       setStory(storyResponse);
-      
+
       // Fetch challenge
       const challengeResponse = await getChallenge(level, language);
       setChallenge(challengeResponse);
-      
+
       // Reset state for new challenge
       setSelectedOption(null);
       setUserAnswer('');
       setBlankAnswers([]);
       setFeedback(null);
       setSubmitDisabled(false);
-      
+
       // Hide the loading indicator
       setNextChallengeLoading(false);
-      
+
       // Initialize blank answers array for fill-in-blank challenges
       if (challengeResponse.type === 'fill-in-blank' && challengeResponse.template) {
         const blankCount = (challengeResponse.template.match(/_____/g) || []).length;
         setBlankAnswers(new Array(blankCount).fill(''));
       }
-      
+
       // Start preloading more challenges in the background
       if (!isPreloadingChallenges()) {
         preloadChallenges(level, language, 3);
@@ -394,19 +401,19 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
   useEffect(() => {
     const handleLevelChange = (event) => {
       setCurrentLevel(event.detail.level);
-      
+
       // Show loading animation
       setNextChallengeLoading(true);
-      
+
       // Fetch new story and challenge for the new level after a short delay
       setTimeout(() => {
         loadStoryAndChallenge();
       }, 500);
     };
-    
+
     // Add event listener
     document.addEventListener('stage-level-changed', handleLevelChange);
-    
+
     // Clean up event listener on component unmount
     return () => {
       document.removeEventListener('stage-level-changed', handleLevelChange);
@@ -442,7 +449,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
         const blankCount = (initialChallenge.template.match(/_____/g) || []).length;
         setBlankAnswers(new Array(blankCount).fill(''));
       }
-      
+
       // Start preloading challenges in the background
       preloadChallenges(level, language, 3);
 
@@ -454,13 +461,13 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       setLoadingProgress(0);
       try {
         setLoadingProgress(20);
-        
+
         // Fetch story based on level
         const storyData = await getStory(level);
         setStory(storyData);
-        
+
         setLoadingProgress(50);
-        
+
         // Fetch challenge
         const data = await getChallenge(level, language);
         setChallenge(data);
@@ -485,7 +492,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
             });
             gameEngineRef.current.init();
           }
-          
+
           // Start preloading challenges in the background
           preloadChallenges(level, language, 3);
         }, 500);
@@ -528,13 +535,13 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     setNextChallengeLoading(true);
     try {
       // Use the provided level override, or get the current level from the game engine, or fall back to the level state
-      const currentLevel = levelOverride || 
-                          (gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel);
-      
+      const currentLevel = levelOverride ||
+        (gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel);
+
       console.log(`Loading next challenge for level: ${currentLevel}`);
       const nextChallenge = await getChallenge(currentLevel, language);
       nextChallengeRef.current = nextChallenge;
-      
+
       // Trigger another background preload if cache is getting low
       if (getCachedChallengeCount(currentLevel) < 1 && !isPreloadingChallenges()) {
         preloadChallenges(currentLevel, language, 2);
@@ -552,20 +559,20 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     setSelectedOption(null);
     setShowHint(false);
     setSubmitDisabled(false);
-    
+
     // If we have a preloaded challenge, use it
     if (nextChallengeRef.current) {
       const nextChallenge = nextChallengeRef.current;
       setChallenge(nextChallenge);
       nextChallengeRef.current = null;
-      
+
       // Set template as initial value for fill-in-blank challenges
       if (nextChallenge.type === 'fill-in-blank' && nextChallenge.template) {
         // Initialize blank answers array based on number of blanks in template
         const blankCount = (nextChallenge.template.match(/_____/g) || []).length;
         setBlankAnswers(new Array(blankCount).fill(''));
       }
-      
+
       // Start loading the next challenge in the background
       const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
       loadNextChallenge(currentLevel);
@@ -576,16 +583,16 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       getChallenge(currentLevel, language)
         .then(data => {
           setChallenge(data);
-          
+
           // Set template as initial value for fill-in-blank challenges
           if (data.type === 'fill-in-blank' && data.template) {
             // Initialize blank answers array based on number of blanks in template
             const blankCount = (data.template.match(/_____/g) || []).length;
             setBlankAnswers(new Array(blankCount).fill(''));
           }
-          
+
           setNextChallengeLoading(false);
-          
+
           // Continue preloading more challenges
           const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
           loadNextChallenge(currentLevel);
@@ -653,10 +660,10 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
 
     setFeedback(result);
     setSubmitDisabled(true);
-    
+
     // Reset feedback animation state
     setFeedbackAnimation(false);
-    
+
     // Trigger animation after a small delay
     setTimeout(() => {
       setFeedbackAnimation(true);
@@ -666,29 +673,29 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     if (result.is_correct) {
       // Player attacks enemy
       const enemyDefeated = gameEngineRef.current.playerAttack();
-      
+
       // Add points
       gameEngineRef.current.addPoints(challenge.points_reward || playerConfig.pointsPerCorrectAnswer);
     } else {
       // Enemy attacks player
       const playerDefeated = gameEngineRef.current.enemyAttack();
-      
+
       // If player is defeated, we don't need to do anything here
       // as the game engine will handle showing the game over popup
     }
-    
+
     // Start loading the next challenge if we don't have one yet
     if (!nextChallengeRef.current && !isPreloadingChallenges()) {
       // Get current level from game engine
       const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : 1;
       loadNextChallenge(currentLevel);
     }
-    
+
     // After feedback delay, move to the next challenge
     setTimeout(() => {
       // Fade out feedback before moving to next challenge
       setFeedbackAnimation(false);
-      
+
       // Wait for fade out animation to complete before moving to next challenge
       setTimeout(() => {
         // Only move to next challenge if enemy or player isn't defeated
@@ -810,7 +817,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       <GameContainer>
         <GameArea>
           <GameCanvas id="game-canvas" ref={gameCanvasRef} />
-          
+
           {/* Feedback popup that appears in front of game engine */}
           {feedback && (
             <FeedbackContainer isCorrect={feedback.is_correct} visible={feedbackAnimation}>
@@ -818,7 +825,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <p>{feedback.feedback}</p>
             </FeedbackContainer>
           )}
-          
+
           <ContentContainer>
             <StoryContainer>
               <StoryTitle>{story?.title || "Adventure Begins"}</StoryTitle>
@@ -826,17 +833,17 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <StoryText>
                 <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
               </StoryText>
-              
+
               {/* Spacer to push hints to the bottom */}
               <div style={{ flex: 1 }}></div>
-              
+
               {/* Hint moved to story container with animation - now at bottom and slides from right */}
               {challenge && challenge.hint && (
                 <HintContent visible={showHint}>
                   <p><strong>Hint:</strong> {challenge.hint}</p>
                 </HintContent>
               )}
-              
+
               {/* Show hint from feedback here instead of in the popup */}
               {feedback && !feedback.is_correct && feedback.next_hint && showHint && (
                 <HintContent visible={true}>
@@ -849,46 +856,44 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
 
+              {nextChallengeLoading && (
+                <LoadingContainer>
+                  <LoadingSpinner />
+                  <p>Loading next challenge...</p>
+                </LoadingContainer>
+              )}
+
               <AnswerContainer>
-                {nextChallengeLoading ? (
-                  <LoadingContainer>
-                    <LoadingSpinner />
-                    <p>Loading next challenge...</p>
-                  </LoadingContainer>
-                ) : (
-                  <>
-                    {challenge.type === 'multiple-choice' ? (
-                      <div>
-                        {challenge.options && challenge.options.map((option, index) => (
-                          <OptionButton
-                            key={index}
-                            selected={selectedOption === option}
-                            onClick={() => handleOptionSelect(option)}
-                            disabled={submitDisabled}
-                          >
-                            {option}
-                          </OptionButton>
-                        ))}
-                      </div>
-                    ) : (
-                      // Default to fill-in-blank for any other type
-                      renderFillInBlankTemplate(challenge.template)
-                    )}
-
-                    <ButtonContainer>
-                      <HintButton onClick={toggleHint} disabled={submitDisabled}>
-                        {showHint ? 'Hide Hint' : 'Show Hint'}
-                      </HintButton>
-
-                      <SubmitButton
-                        onClick={handleSubmit}
-                        disabled={submitDisabled || (challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer)}
+                {challenge.type === 'multiple-choice' ? (
+                  <div>
+                    {challenge.options && challenge.options.map((option, index) => (
+                      <OptionButton
+                        key={index}
+                        selected={selectedOption === option}
+                        onClick={() => handleOptionSelect(option)}
+                        disabled={submitDisabled}
                       >
-                        Submit Answer
-                      </SubmitButton>
-                    </ButtonContainer>
-                  </>
+                        {option}
+                      </OptionButton>
+                    ))}
+                  </div>
+                ) : (
+                  // Default to fill-in-blank for any other type
+                  renderFillInBlankTemplate(challenge.template)
                 )}
+
+                <ButtonContainer>
+                  <HintButton onClick={toggleHint} disabled={submitDisabled}>
+                    {showHint ? 'Hide Hint' : 'Show Hint'}
+                  </HintButton>
+
+                  <SubmitButton
+                    onClick={handleSubmit}
+                    disabled={submitDisabled || (challenge.type === 'multiple-choice' ? !selectedOption : !userAnswer)}
+                  >
+                    Submit Answer
+                  </SubmitButton>
+                </ButtonContainer>
               </AnswerContainer>
             </ChallengeContainer>
           </ContentContainer>

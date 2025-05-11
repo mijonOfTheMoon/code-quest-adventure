@@ -79,7 +79,7 @@ const BlankInput = styled.input`
 `;
 
 const StoryContainer = styled.div`
-  flex: 1.35;
+  flex: 1.75;
   padding: 20px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 10px;
@@ -92,7 +92,7 @@ const StoryContainer = styled.div`
   position: relative; /* Added for positioning loading animation */
 `;
 
-const StoryTitle = styled.h2`
+const StoryTitle = styled.h3`
   color: #f5b70a;
   font-family: 'Press Start 2P', cursive;
   margin-bottom: 15px;

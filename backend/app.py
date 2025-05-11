@@ -278,38 +278,39 @@ def get_challenge():
             if language.lower() == "javascript":
                 language_specific_instructions = """
                 For JavaScript challenges:
-                1. Make sure all code is valid JavaScript syntax
-                2. Use semicolons at the end of statements
-                3. For fill-in-blank challenges, ensure the template and answer are valid JavaScript
-                4. DO NOT include any comments in the code (no // or /* */ comments)
-                5. Avoid using ES6+ features that might not be widely supported
-                6. Test your code solution to ensure it works correctly
-                7. Provide clean code without escape characters
-                8. Do not use backslashes at the end of lines
-                9. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template
-                10. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ")
+                1. Make sure all code is valid JavaScript syntax.
+                2. Use semicolons at the end of statements.
+                3. For fill-in-blank challenges, ensure the template and answer are valid JavaScript.
+                4. DO NOT include any comments in the code (no // or /* */ comments).
+                5. Avoid using ES6+ features that might not be widely supported.
+                6. Test your code solution to ensure it works correctly.
+                7. Provide clean code without escape characters.
+                8. Do not use backslashes at the end of lines.
+                9. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template.
+                10. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ").
                 """
             else:
                 language_specific_instructions = """
                 For Python challenges:
-                1. Make sure all code is valid Python syntax
-                2. For fill-in-blank challenges, ensure the template and answer are valid Python
-                3. DO NOT include any comments in the code (no # comments)
-                4. Provide clean code without escape characters
-                5. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template
-                6. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ")
-                7. DO NOT include any comments in the code (no // or /* */ comments)
-                8. NO COMMENTS AT ALL
+                1. Make sure all code is valid Python syntax.
+                2. For fill-in-blank challenges, ensure the template and answer are valid Python.
+                3. DO NOT include any comments in the code (no # comments).
+                4. Provide clean code without escape characters.
+                5. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template.
+                6. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ").
+                7. DO NOT include any comments in the code (no // or /* */ comments).
+                8. NO COMMENTS AT ALL.
                 """
             
             prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
             Make it appropriate for beginners but challenging.
             Always generate new and unique fresh question.
             Randomize the first word of the challenge.
+            Generate ONLY EXACTLY 4 answer options for multiple choice question.
             The question type MUST be {question_type}.
-            DO NOT include any comments in the code (no # comments)
-            DO NOT include any comments in the code (no // or /* */ comments)
-            NO COMMENTS AT ALL
+            DO NOT include any comments in the code (no # comments).
+            DO NOT include any comments in the code (no // or /* */ comments).
+            NO COMMENTS AT ALL.
             {language_specific_instructions}
             Format the response as JSON with the following structure:
             {{
@@ -321,8 +322,8 @@ def get_challenge():
                 "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
                 "hint": "A helpful hint (under 50 words)",
                 "explanation": "Explanation of the solution (under 100 words)",
-                "difficulty": "easy/medium/hard",
-                "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
+                "difficulty": "easy for level 1, medium for level 2, and hard for level 3",
+                "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3
             }}
             """
             
@@ -391,38 +392,6 @@ def get_challenge():
         except Exception as e:
             print(f"Unexpected error in challenge generation attempt {attempt+1}: {str(e)}")
             continue
-    
-    # If we've tried multiple times and still failed, return a fallback challenge
-    fallback_challenge = create_fallback_challenge(level, question_type, language)
-    return jsonify(fallback_challenge)
-
-def create_fallback_challenge(level, question_type, language):
-    """Create a fallback challenge when API generation fails"""
-    level_int = int(level)
-    
-    if question_type == "multiple-choice":
-        return {
-            "question": f"Level {level} fallback question: What will the following code output?",
-            "type": "multiple-choice",
-            "code": "x = 5\ny = 10\nresult = x + y\nprint(result)",
-            "options": ["15", "5", "10", "Error"],
-            "answer": "15",
-            "hint": "Add the values of x and y together.",
-            "explanation": "The code adds 5 and 10 together and stores it in result, then prints it.",
-            "difficulty": "easy",
-            "xp_reward": 10 * level_int
-        }
-    else:  # fill-in-blank
-        return {
-            "question": f"Level {level} fallback question: Complete the code to calculate the sum and product of two numbers.",
-            "type": "fill-in-blank",
-            "template": "a = 7\nb = 3\nsum_result = _____\nproduct_result = _____",
-            "answer": "a + b, a * b",
-            "hint": "Use the addition and multiplication operators.",
-            "explanation": "To find the sum, use the + operator. To find the product, use the * operator.",
-            "difficulty": "easy",
-            "xp_reward": 10 * level_int
-        }
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

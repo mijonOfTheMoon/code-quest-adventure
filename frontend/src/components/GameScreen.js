@@ -88,6 +88,7 @@ const StoryContainer = styled.div`
   height: 100%; /* Take full height */
   display: flex;
   flex-direction: column;
+  position: relative; /* Added for positioning loading animation */
 `;
 
 const StoryTitle = styled.h2`
@@ -273,6 +274,10 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+// Use the same LoadingContainer style for story loading to maintain consistency
+
+// Using the same styling for loading text in both containers
+
 const LoadingContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -348,6 +353,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
   const [error, setError] = useState(initialError || null);
   const [blankAnswers, setBlankAnswers] = useState([]);
   const [nextChallengeLoading, setNextChallengeLoading] = useState(false);
+  const [storyLoading, setStoryLoading] = useState(false);
   const [submitDisabled, setSubmitDisabled] = useState(false);
   const [feedbackAnimation, setFeedbackAnimation] = useState(false);
   const gameCanvasRef = useRef(null);
@@ -357,7 +363,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
   // Function to load story and challenge based on current level
   const loadStoryAndChallenge = async () => {
     try {
-      // Show loading animation
+      // Show loading animations for both story and challenge
+      setStoryLoading(true);
       setNextChallengeLoading(true);
 
       // Get current level from game engine or use state
@@ -366,6 +373,9 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       // Fetch story based on current level
       const storyResponse = await getStory(level);
       setStory(storyResponse);
+      
+      // Hide story loading indicator
+      setStoryLoading(false);
 
       // Fetch challenge
       const challengeResponse = await getChallenge(level, language);
@@ -378,7 +388,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       setFeedback(null);
       setSubmitDisabled(false);
 
-      // Hide the loading indicator
+      // Hide the challenge loading indicator
       setNextChallengeLoading(false);
 
       // Initialize blank answers array for fill-in-blank challenges
@@ -393,6 +403,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       }
     } catch (err) {
       setError('Failed to load game content. Please try again.');
+      setStoryLoading(false);
       setNextChallengeLoading(false);
     }
   };
@@ -402,7 +413,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     const handleLevelChange = (event) => {
       setCurrentLevel(event.detail.level);
 
-      // Show loading animation
+      // Show loading animations for both story and challenge
+      setStoryLoading(true);
       setNextChallengeLoading(true);
 
       // Fetch new story and challenge for the new level after a short delay
@@ -833,6 +845,13 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               <StoryText>
                 <StoryLabel>Objective: </StoryLabel> {story?.objective || "Solve coding challenges to advance"}
               </StoryText>
+
+              {storyLoading && (
+                <LoadingContainer>
+                  <LoadingSpinner />
+                  <p>Loading story...</p>
+                </LoadingContainer>
+              )}
 
               {/* Spacer to push hints to the bottom */}
               <div style={{ flex: 1 }}></div>

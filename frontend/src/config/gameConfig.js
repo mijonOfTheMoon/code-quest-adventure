@@ -90,7 +90,7 @@ export const playerConfig = {
   // Health per level
   healthByLevel: {
     1: 100, // 4 hits from level 1 enemy (damage 25)
-    2: 105, // 3 hits from level 2 enemy (damage 35)
+    2: 100, // 3 hits from level 2 enemy (damage 35)
     3: 100  // 2 hits from boss enemy (damage 50)
   },
   
@@ -120,5 +120,8 @@ export const gameProgressionConfig = {
   answerFeedbackDelay: 4000,
   
   // Delay after defeating an enemy before showing next enemy (ms)
-  enemyDefeatDelay: 2000
+  enemyDefeatDelay: 2000,
+  
+  // Delay after changing stage level before showing next enemy (ms)
+  stageLevelChangeDelay: 1500
 };

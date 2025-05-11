@@ -679,6 +679,11 @@ export default class GameEngine {
             // Increment level
             this.currentLevel = Math.min(3, this.currentLevel + 1);
             
+            // Update level text
+            if (this.levelText) {
+              this.levelText.setText(`Level: ${this.currentLevel}`);
+            }
+            
             // Update player health for new level
             this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
             this.playerHealth = this.playerMaxHealth;
@@ -696,6 +701,13 @@ export default class GameEngine {
               this.attackAnimationPlaying = false;
               this.player.anims.play('hero_idle', true);
               this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+              
+              // Dispatch a custom event to notify the GameScreen component about the level change
+              const levelChangeEvent = new CustomEvent('stage-level-changed', { 
+                detail: { level: this.currentLevel } 
+              });
+              document.dispatchEvent(levelChangeEvent);
+              console.log(`Stage level changed to: ${this.currentLevel}`);
             }, 1500);
           });
           

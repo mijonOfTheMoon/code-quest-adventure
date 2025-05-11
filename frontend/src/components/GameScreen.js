@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import GameEngine from '../game/GameEngine';
-import { getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges } from '../services/api';
+import { playerConfig, gameProgressionConfig } from '../config/gameConfig';
+import { getStory, getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges } from '../services/api';
 import LoadingScreen from './LoadingScreen';
 
 const Container = styled.div`
@@ -327,8 +328,10 @@ const ErrorMessage = styled.div`
   font-family: 'Courier New', monospace;
 `;
 
-const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'python', initialError = null }) => {
+const GameScreen = ({ story: initialStory = null, initialChallenge = null, level = 1, language = 'python', initialError = null }) => {
   const [challenge, setChallenge] = useState(initialChallenge || null);
+  const [story, setStory] = useState(initialStory || null);
+  const [currentLevel, setCurrentLevel] = useState(level);
   const [loading, setLoading] = useState(!initialChallenge);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -343,6 +346,72 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
   const gameCanvasRef = useRef(null);
   const gameEngineRef = useRef(null);
   const nextChallengeRef = useRef(null);
+
+  // Function to load story and challenge based on current level
+  const loadStoryAndChallenge = async () => {
+    try {
+      // Show loading animation
+      setNextChallengeLoading(true);
+      
+      // Get current level from game engine or use state
+      const level = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
+      
+      // Fetch story based on current level
+      const storyResponse = await getStory(level);
+      setStory(storyResponse);
+      
+      // Fetch challenge
+      const challengeResponse = await getChallenge(level, language);
+      setChallenge(challengeResponse);
+      
+      // Reset state for new challenge
+      setSelectedOption(null);
+      setUserAnswer('');
+      setBlankAnswers([]);
+      setFeedback(null);
+      setSubmitDisabled(false);
+      
+      // Hide the loading indicator
+      setNextChallengeLoading(false);
+      
+      // Initialize blank answers array for fill-in-blank challenges
+      if (challengeResponse.type === 'fill-in-blank' && challengeResponse.template) {
+        const blankCount = (challengeResponse.template.match(/_____/g) || []).length;
+        setBlankAnswers(new Array(blankCount).fill(''));
+      }
+      
+      // Start preloading more challenges in the background
+      if (!isPreloadingChallenges()) {
+        preloadChallenges(level, language, 3);
+      }
+    } catch (err) {
+      setError('Failed to load game content. Please try again.');
+      setNextChallengeLoading(false);
+    }
+  };
+
+  // Listen for stage level change events
+  useEffect(() => {
+    const handleLevelChange = (event) => {
+      setCurrentLevel(event.detail.level);
+      
+      // Show loading animation
+      setNextChallengeLoading(true);
+      
+      // Fetch new story and challenge for the new level after a short delay
+      setTimeout(() => {
+        loadStoryAndChallenge();
+      }, 500);
+    };
+    
+    // Add event listener
+    document.addEventListener('stage-level-changed', handleLevelChange);
+    
+    // Clean up event listener on component unmount
+    return () => {
+      document.removeEventListener('stage-level-changed', handleLevelChange);
+    };
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (feedback) {
@@ -362,7 +431,6 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       setTimeout(() => {
         if (gameCanvasRef.current) {
           gameEngineRef.current = new GameEngine('game-canvas', () => {
-            console.log('Game engine initialized');
           });
           gameEngineRef.current.init();
         }
@@ -376,16 +444,24 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       }
       
       // Start preloading challenges in the background
-      preloadChallenges(level, language, 8);
+      preloadChallenges(level, language, 3);
 
       return;
     }
 
-    // Only fetch challenge if not provided in props
+    // Only fetch story and challenge if not provided in props
     const fetchChallenge = async () => {
       setLoadingProgress(0);
       try {
-        setLoadingProgress(30);
+        setLoadingProgress(20);
+        
+        // Fetch story based on level
+        const storyData = await getStory(level);
+        setStory(storyData);
+        
+        setLoadingProgress(50);
+        
+        // Fetch challenge
         const data = await getChallenge(level, language);
         setChallenge(data);
 
@@ -406,16 +482,14 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           // Initialize game engine after component is fully rendered
           if (gameCanvasRef.current) {
             gameEngineRef.current = new GameEngine('game-canvas', () => {
-              console.log('Game engine initialized');
             });
             gameEngineRef.current.init();
           }
           
           // Start preloading challenges in the background
-          preloadChallenges(level, language, 8);
+          preloadChallenges(level, language, 3);
         }, 500);
       } catch (error) {
-        console.error('Error fetching challenge:', error);
         setError('Failed to load challenge data. Please try again.');
         setLoading(false);
       }
@@ -450,18 +524,22 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     setSelectedOption(option);
   };
 
-  const loadNextChallenge = async () => {
+  const loadNextChallenge = async (levelOverride = null) => {
     setNextChallengeLoading(true);
     try {
-      const nextChallenge = await getChallenge(level, language);
+      // Use the provided level override, or get the current level from the game engine, or fall back to the level state
+      const currentLevel = levelOverride || 
+                          (gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel);
+      
+      console.log(`Loading next challenge for level: ${currentLevel}`);
+      const nextChallenge = await getChallenge(currentLevel, language);
       nextChallengeRef.current = nextChallenge;
       
       // Trigger another background preload if cache is getting low
-      if (getCachedChallengeCount() < 2 && !isPreloadingChallenges()) {
-        preloadChallenges(level, language, 2);
+      if (getCachedChallengeCount(currentLevel) < 1 && !isPreloadingChallenges()) {
+        preloadChallenges(currentLevel, language, 2);
       }
     } catch (error) {
-      console.error('Error loading next challenge:', error);
     } finally {
       setNextChallengeLoading(false);
     }
@@ -489,11 +567,13 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       }
       
       // Start loading the next challenge in the background
-      loadNextChallenge();
+      const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
+      loadNextChallenge(currentLevel);
     } else {
       // If no preloaded challenge, show loading state and fetch one
       setNextChallengeLoading(true);
-      getChallenge(level, language)
+      const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
+      getChallenge(currentLevel, language)
         .then(data => {
           setChallenge(data);
           
@@ -507,10 +587,10 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           setNextChallengeLoading(false);
           
           // Continue preloading more challenges
-          loadNextChallenge();
+          const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
+          loadNextChallenge(currentLevel);
         })
         .catch(error => {
-          console.error('Error fetching next challenge:', error);
           setError('Failed to load next challenge. Please try again.');
           setNextChallengeLoading(false);
         });
@@ -588,7 +668,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       const enemyDefeated = gameEngineRef.current.playerAttack();
       
       // Add points
-      gameEngineRef.current.addPoints(challenge.points_reward || 20);
+      gameEngineRef.current.addPoints(challenge.points_reward || playerConfig.pointsPerCorrectAnswer);
     } else {
       // Enemy attacks player
       const playerDefeated = gameEngineRef.current.enemyAttack();
@@ -599,10 +679,12 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
     
     // Start loading the next challenge if we don't have one yet
     if (!nextChallengeRef.current && !isPreloadingChallenges()) {
-      loadNextChallenge();
+      // Get current level from game engine
+      const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : 1;
+      loadNextChallenge(currentLevel);
     }
     
-    // After 4 seconds (changed from 2 seconds), move to the next challenge
+    // After feedback delay, move to the next challenge
     setTimeout(() => {
       // Fade out feedback before moving to next challenge
       setFeedbackAnimation(false);
@@ -615,7 +697,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
           moveToNextChallenge();
         }
       }, 500);
-    }, 4000);
+    }, gameProgressionConfig.answerFeedbackDelay);
   };
 
   const toggleHint = () => {

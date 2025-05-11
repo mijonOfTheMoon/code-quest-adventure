@@ -15,7 +15,7 @@ This React application provides the user interface for the Code Quest Adventure 
 
 ## Prerequisites
 
-- Node.js (v20+)
+- Node.js (v18+)
 - npm (v10+)
 - Backend server running (see backend README)
 - Amazon Q CLI installed and configured (see main README)

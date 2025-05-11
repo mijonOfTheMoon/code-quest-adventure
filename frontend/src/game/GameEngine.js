@@ -47,6 +47,12 @@ export default class GameEngine {
   }
 
   init() {
+    // Clean up any existing game instance
+    if (this.game) {
+      this.game.destroy(true);
+      this.destroyHealthBars();
+    }
+    
     const config = {
       type: Phaser.AUTO,
       parent: this.containerId,
@@ -376,11 +382,16 @@ export default class GameEngine {
 
     // Play idle animation
     this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+    
+    console.log(`Created new enemy for level ${this.currentLevel}`);
   }
 
   update() {
     // Get the actual height of the game
     const gameHeight = this.game.config.height;
+
+    // Make sure player and enemy exist
+    if (!this.player || !this.enemy) return;
 
     // Gentle floating animation for idle state with slower motion
     if (!this.attackAnimationPlaying) {
@@ -389,18 +400,24 @@ export default class GameEngine {
       this.enemy.y = baseY + Math.cos(this.gameScene.time.now / 1600) * 5; // Slower motion
 
       // Update health bar positions to follow characters
-      if (this.playerHealthBarBorder && this.playerHealthBar) {
+      if (this.playerHealthBarBorder && this.playerHealthBar && 
+          this.enemyHealthBarBorder && this.enemyHealthBar) {
         this.updateHealthBars();
       }
     }
   }
 
   createHealthBars() {
+    // First destroy any existing health bars
+    this.destroyHealthBars();
+    
+    console.log('Creating new health bars');
+    
     // Position health bars above characters
     const playerY = this.player.y - 50; // Moved up closer to character
     const enemyY = this.enemy.y - 50; // Moved up closer to character
 
-    // Update player health bar border position
+    // Create player health bar border position
     this.playerHealthBarBorder = this.gameScene.add.graphics();
     this.playerHealthBarBorder.fillStyle(0x000000, 0.8);
     this.playerHealthBarBorder.fillRoundedRect(
@@ -411,7 +428,7 @@ export default class GameEngine {
       6
     );
 
-    // Update player health bar
+    // Create player health bar
     this.playerHealthBar = this.gameScene.add.graphics();
     this.playerHealthBar.fillStyle(0x66ccff, 1);
     const playerBarWidth = 76 * (this.playerHealth / this.playerMaxHealth); // Adjusted width
@@ -423,7 +440,7 @@ export default class GameEngine {
       5
     );
 
-    // Update enemy health bar border position
+    // Create enemy health bar border position
     this.enemyHealthBarBorder = this.gameScene.add.graphics();
     this.enemyHealthBarBorder.fillStyle(0x000000, 0.8);
     this.enemyHealthBarBorder.fillRoundedRect(
@@ -434,7 +451,7 @@ export default class GameEngine {
       6
     );
 
-    // Update enemy health bar
+    // Create enemy health bar
     this.enemyHealthBar = this.gameScene.add.graphics();
     this.enemyHealthBar.fillStyle(0xff9999, 1);
     const enemyBarWidth = 76 * (this.enemyHealth / this.enemyMaxHealth); // Adjusted width
@@ -445,9 +462,50 @@ export default class GameEngine {
       8, // Made bar smaller
       5
     );
+    
+    console.log('Health bars created successfully');
+  }
+  
+  // Helper method to destroy health bars
+  destroyHealthBars() {
+    // Destroy player health bars if they exist
+    if (this.playerHealthBar) {
+      this.playerHealthBar.clear();
+      this.playerHealthBar.destroy();
+      this.playerHealthBar = null;
+      console.log('Player health bar destroyed');
+    }
+    
+    if (this.playerHealthBarBorder) {
+      this.playerHealthBarBorder.clear();
+      this.playerHealthBarBorder.destroy();
+      this.playerHealthBarBorder = null;
+      console.log('Player health bar border destroyed');
+    }
+    
+    // Destroy enemy health bars if they exist
+    if (this.enemyHealthBar) {
+      this.enemyHealthBar.clear();
+      this.enemyHealthBar.destroy();
+      this.enemyHealthBar = null;
+      console.log('Enemy health bar destroyed');
+    }
+    
+    if (this.enemyHealthBarBorder) {
+      this.enemyHealthBarBorder.clear();
+      this.enemyHealthBarBorder.destroy();
+      this.enemyHealthBarBorder = null;
+      console.log('Enemy health bar border destroyed');
+    }
   }
 
   updateHealthBars() {
+    // Check if health bars exist, if not create them
+    if (!this.playerHealthBar || !this.enemyHealthBar) {
+      this.createHealthBars();
+      return;
+    }
+    
     // Position health bars above characters
     const playerY = this.player.y + 70; // Moved up closer to character
     const enemyY = this.enemy.y + 70; // Moved up closer to character
@@ -693,8 +751,37 @@ export default class GameEngine {
               // Remove loading screen
               loadingContainer.destroy();
               
+              // Clean up existing health bars
+              if (this.playerHealthBar) {
+                this.playerHealthBar.clear();
+                this.playerHealthBar.destroy();
+                this.playerHealthBar = null;
+              }
+              
+              if (this.playerHealthBarBorder) {
+                this.playerHealthBarBorder.clear();
+                this.playerHealthBarBorder.destroy();
+                this.playerHealthBarBorder = null;
+              }
+              
+              if (this.enemyHealthBar) {
+                this.enemyHealthBar.clear();
+                this.enemyHealthBar.destroy();
+                this.enemyHealthBar = null;
+              }
+              
+              if (this.enemyHealthBarBorder) {
+                this.enemyHealthBarBorder.clear();
+                this.enemyHealthBarBorder.destroy();
+                this.enemyHealthBarBorder = null;
+              }
+              
+              console.log('Health bars destroyed before creating new enemy');
+              
               // Create new enemy
               this.createEnemy();
+              
+              // Create new health bars
               this.createHealthBars();
               
               // Reset animation state

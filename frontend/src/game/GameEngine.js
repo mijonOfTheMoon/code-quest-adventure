@@ -11,12 +11,17 @@ import background from '../assets/platformer/tiles and background_foreground (ne
 import attackEffect from '../assets/platformer/herochar sprites(new)/sword_effect_strip_4(new).png';
 import hitEffect from '../assets/platformer/herochar sprites(new)/hit_sparkle_anim_strip_4.png';
 // Points effect sprite
-import pointsEffect from '../assets/platformer/miscellaneous sprites/orb_collected_anim_strip_5.png';
 import grassProps from '../assets/platformer/miscellaneous sprites/grass_props.png';
 import flowersProps from '../assets/platformer/miscellaneous sprites/flowers_props.png';
 import bigFlowersProps from '../assets/platformer/miscellaneous sprites/bigflowers_props.png';
 import rootProps from '../assets/platformer/miscellaneous sprites/root_props.png';
 import dryGrassProps from '../assets/platformer/miscellaneous sprites/drygrass_props.png';
+
+// Import audio files
+import backgroundMusic from '../assets/audio/background.mp3';
+import hitSound from '../assets/audio/hit.mp3';
+import victorySound from '../assets/audio/victory.mp3';
+import defeatSound from '../assets/audio/defeat.mp3';
 
 export default class GameEngine {
   constructor(containerId, onGameReady) {
@@ -44,11 +49,22 @@ export default class GameEngine {
     this.attackAnimationPlaying = false;
     this.enemiesDefeated = 0;
     this.currentEnemyConfig = null;
+    
+    // Audio properties
+    this.backgroundMusic = null;
+    this.hitSound = null;
+    this.victorySound = null;
+    this.defeatSound = null;
   }
 
   init() {
     // Clean up any existing game instance
     if (this.game) {
+      // Stop any playing audio
+      if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
+        this.backgroundMusic.stop();
+      }
+      
       this.game.destroy(true);
       this.destroyHealthBars();
     }
@@ -70,6 +86,9 @@ export default class GameEngine {
           gravity: { y: 0 },
           debug: false
         }
+      },
+      audio: {
+        disableWebAudio: false
       }
     };
 
@@ -132,6 +151,12 @@ export default class GameEngine {
     this.gameScene.load.image('roots', rootProps);
     this.gameScene.load.image('dry_grass', dryGrassProps);
     this.gameScene.load.image('background', background);
+    
+    // Load audio files
+    this.gameScene.load.audio('background_music', backgroundMusic);
+    this.gameScene.load.audio('hit_sound', hitSound);
+    this.gameScene.load.audio('victory_sound', victorySound);
+    this.gameScene.load.audio('defeat_sound', defeatSound);
   }
 
   create() {
@@ -188,11 +213,40 @@ export default class GameEngine {
     // Play idle animations
     this.player.anims.play('hero_idle', true);
     this.enemy.anims.play(`enemy_idle_${this.currentLevel}`, true);
+    
+    // Setup audio
+    this.setupAudio();
 
     // Notify that game is ready
     if (this.onGameReady) {
       this.onGameReady();
     }
+  }
+  
+  setupAudio() {
+    // Create audio instances
+    this.backgroundMusic = this.gameScene.sound.add('background_music', {
+      loop: true,
+      volume: 0.5
+    });
+    
+    this.hitSound = this.gameScene.sound.add('hit_sound', {
+      loop: false,
+      volume: 0.7
+    });
+    
+    this.victorySound = this.gameScene.sound.add('victory_sound', {
+      loop: false,
+      volume: 0.7
+    });
+    
+    this.defeatSound = this.gameScene.sound.add('defeat_sound', {
+      loop: false,
+      volume: 0.7
+    });
+    
+    // Start playing background music on loop
+    this.backgroundMusic.play();
   }
 
   addEnvironmentProps() {
@@ -585,6 +639,11 @@ export default class GameEngine {
       // Update enemy health bar
       this.updateHealthBars();
 
+      // Play hit sound
+      if (this.hitSound) {
+        this.hitSound.play();
+      }
+
       // Show damage text
       if (this.damageText) this.damageText.destroy();
       this.damageText = this.gameScene.add.text(this.enemy.x, this.enemy.y - 50, `-${damage}`, {
@@ -634,6 +693,11 @@ export default class GameEngine {
         // Keep enemy in hit state animation
         // Don't return to idle state
         this.attackAnimationPlaying = true;
+        
+        // Play victory sound
+        if (this.victorySound) {
+          this.victorySound.play();
+        }
         
         // Create congratulations popup
         const gameWidth = this.game.config.width;
@@ -861,6 +925,11 @@ export default class GameEngine {
 
       // Update player health bar
       this.updateHealthBars();
+      
+      // Play hit sound
+      if (this.hitSound) {
+        this.hitSound.play();
+      }
 
       // Show damage text
       const damageText = this.gameScene.add.text(this.player.x, this.player.y - 50, `-${damage}`, {
@@ -910,6 +979,11 @@ export default class GameEngine {
         // Keep player in hit state animation
         // Don't return to idle state
         this.attackAnimationPlaying = true;
+        
+        // Play defeat sound
+        if (this.defeatSound) {
+          this.defeatSound.play();
+        }
         
         // Create game over popup
         const gameWidth = this.game.config.width;

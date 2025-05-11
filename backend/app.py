@@ -218,7 +218,7 @@ def get_story():
     
     prompt = f"""Generate a randomized short adventure story introduction for a coding game called "Code Quest Adventure" for level {level}.
     The story should be exciting and set up a scenario where the player needs to solve coding challenges.
-    Always generate new and unique value. The title should be 3 random cheesy words. You must include the level on the title.
+    Always generate new and unique story and objective. The title should be 3 random cheesy words. You must include the level on the title.
     You must randomize the starting word.
     Format the response as JSON with the following structure:
     {{
@@ -275,7 +275,7 @@ def get_challenge():
     
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
-    Always generate new and unique value.
+    Always generate new and unique fresh question.
     Randomize the first word of the chalenge.
     The probability of multiple choice is 65%, and the fill in the blank is 35%.
     DO NOT include any comments in the code (no # comments)
@@ -293,7 +293,7 @@ def get_challenge():
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
         "difficulty": "easy/medium/hard",
-        "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
+        "points_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
     }}
     """
     

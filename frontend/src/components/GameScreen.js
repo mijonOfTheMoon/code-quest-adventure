@@ -887,7 +887,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               {/* Display code for all question types */}
               {challenge.code && (
                 <CodeDisplay>
-                  {challenge.code}
+                  {challenge.code.toString().replace(/\\n/g, '\n')}
                 </CodeDisplay>
               )}
 

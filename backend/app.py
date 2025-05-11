@@ -320,7 +320,7 @@ def get_challenge():
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
         "difficulty": "easy/medium/hard (easy for level 1, medium for level 2, hard for level 3)",
-        "xp_reward": number between 10-50
+        "xp_reward": 10 for level 1, 20 for level 2, and 3 for level 3
     }}
     """
     

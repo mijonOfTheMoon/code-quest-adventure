@@ -302,7 +302,7 @@ def get_challenge():
     
     IMPORTANT INSTRUCTIONS FOR MULTIPLE-CHOICE QUESTIONS:
     - If the multiple-choice question needs to include code, write the code directly in the "question" field
-    - Keep the code concise (maximum 15 lines)
+    - Keep the code concise (maximum 10 lines)
     - Format the code properly with line breaks using \\n
     - Make sure the code is properly escaped for JSON
     - The question should clearly explain what the user needs to determine about the code

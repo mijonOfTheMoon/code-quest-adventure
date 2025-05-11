@@ -645,7 +645,7 @@ export default class GameEngine {
         // Add background
         const popupBg = this.gameScene.add.graphics();
         popupBg.fillStyle(0x000000, 0.8);
-        popupBg.fillRoundedRect(-200, -125, 400, 250, 20);
+        popupBg.fillRoundedRect(-275, -125, 550, 250, 20);
         popupContainer.add(popupBg);
         
         // Add congratulations text
@@ -921,7 +921,7 @@ export default class GameEngine {
         // Add background
         const popupBg = this.gameScene.add.graphics();
         popupBg.fillStyle(0x000000, 0.8);
-        popupBg.fillRoundedRect(-200, -125, 400, 250, 20);
+        popupBg.fillRoundedRect(-275, -125, 550, 250, 20);
         popupContainer.add(popupBg);
         
         // Add game over text

@@ -303,9 +303,6 @@ def get_challenge():
                 8. NO COMMENTS AT ALL.
                 """
             
-            # Use objective in prompt - it should always be provided now
-            objective_instruction = f"The challenge should relate to this objective: '{objective}'"
-            
             prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
             Make it appropriate for beginners but challenging.
             Always generate new and unique fresh question.
@@ -315,8 +312,8 @@ def get_challenge():
             DO NOT include any comments in the code (no # comments).
             DO NOT include any comments in the code (no // or /* */ comments).
             NO COMMENTS AT ALL.
-            {objective_instruction}
-            {language_specific_instructions}
+            The challenge should relate to this objective: "{objective}".
+            {language_specific_instructions}.
             Format the response as JSON with the following structure:
             {{
                 "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION)",

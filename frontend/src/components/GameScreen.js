@@ -79,7 +79,7 @@ const BlankInput = styled.input`
 `;
 
 const StoryContainer = styled.div`
-  flex: 1.1;
+  flex: 1.35;
   padding: 20px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 10px;

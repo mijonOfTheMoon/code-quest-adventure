@@ -320,12 +320,10 @@ def get_challenge():
                 "type": "{question_type}",
                 "code": "Source code that the question is about (ONLY required for multiple-choice questions)",
                 "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only, EXACTLY 4 options),
-                "template": "Code template with _____ for blanks" (ONLY for fill-in-blank questions),
+                "template": "Code template with _____ for blanks (ONLY for fill-in-blank questions)",
                 "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
                 "hint": "A helpful hint (under 50 words)",
                 "explanation": "Explanation of the solution (under 100 words)",
-                "difficulty": "easy for level 1, medium for level 2, and hard for level 3",
-                "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3
             }}
             """
             
@@ -360,6 +358,15 @@ def get_challenge():
             # For fill-in-blank questions, ensure template exists
             if parsed_content.get("type") == "fill-in-blank" and "template" not in parsed_content:
                 parsed_content["template"] = "// Template example will be shown here"
+                
+            if "difficulty" not in parsed_content:
+                level_int = int(level)
+                if level_int == 1:
+                    parsed_content["difficulty"] = "easy"
+                elif level_int == 2:
+                    parsed_content["difficulty"] = "medium"
+                elif level_int == 3:
+                    parsed_content["difficulty"] = "hard"
             
             # Set XP reward based on level if not present
             if "xp_reward" not in parsed_content:
@@ -370,8 +377,6 @@ def get_challenge():
                     parsed_content["xp_reward"] = 20
                 elif level_int == 3:
                     parsed_content["xp_reward"] = 30
-                else:
-                    parsed_content["xp_reward"] = 15
             
             # Validate required fields based on question type
             required_fields = ["question", "type", "answer", "hint"]

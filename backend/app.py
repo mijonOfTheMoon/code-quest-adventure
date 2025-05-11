@@ -9,10 +9,6 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 def fix_json_string_escaping(json_str):
-    """
-    Fix common JSON string escaping issues, particularly with code examples
-    that contain quotes within strings
-    """
     # First, handle Python code templates with backslashes
     # Replace all backslashes with double backslashes in template and answer fields
     json_str = re.sub(r'"template":\s*"(.*?)"', 
@@ -51,7 +47,6 @@ def fix_json_string_escaping(json_str):
     return result
 
 def clean_javascript_code(code):
-    """Clean JavaScript code by removing unwanted escape characters and comments"""
     if not code:
         return code
     
@@ -91,13 +86,6 @@ def clean_javascript_code(code):
     return code
 
 def generate_with_amazon_q(prompt, max_tokens=500):
-    """
-    Generate content using Amazon Q CLI with length limitations
-    
-    Args:
-        prompt: The prompt to send to Amazon Q
-        max_tokens: Maximum number of tokens (roughly words) to generate
-    """
     # Add length limitation to the prompt
     limited_prompt = f"{prompt}\n\nIMPORTANT: Keep your response concise and under {max_tokens} tokens. Focus on essential information only."
     
@@ -115,7 +103,6 @@ def generate_with_amazon_q(prompt, max_tokens=500):
         
         # Additional length check - truncate if still too long
         if len(content.split()) > max_tokens * 1.5:  # Using word count as rough approximation
-            print(f"Warning: Generated content exceeds length limit ({len(content.split())} words)")
             # Truncate to avoid excessively long responses
             content_parts = content.split()
             content = " ".join(content_parts[:max_tokens]) + "..."
@@ -126,14 +113,107 @@ def generate_with_amazon_q(prompt, max_tokens=500):
     except Exception as e:
         return {"error": f"Error generating content: {str(e)}"}
 
+def create_story_json(content):
+    try:
+        # Find JSON content between curly braces
+        json_start = content.find('{')
+        json_end = content.rfind('}') + 1
+        if json_start >= 0 and json_end > json_start:
+            json_content = content[json_start:json_end]
+            parsed_content = json.loads(json_content)
+            
+            # Additional length checks on individual fields
+            if "story" in parsed_content and len(parsed_content["story"]) > 800:
+                parsed_content["story"] = parsed_content["story"][:800] + "..."
+            if "objective" in parsed_content and len(parsed_content["objective"]) > 250:
+                parsed_content["objective"] = parsed_content["objective"][:250] + "..."
+                
+            return parsed_content, None
+        else:
+            return None, "Could not parse JSON from Amazon Q response"
+    except json.JSONDecodeError:
+        return None, "Invalid JSON response from Amazon Q"
+
+def create_challenge_json(content, language):
+    try:
+        # Find JSON content between curly braces
+        json_start = content.find('{')
+        json_end = content.rfind('}') + 1
+        if json_start >= 0 and json_end > json_start:
+            json_content = content[json_start:json_end]
+            
+            # Fix common JSON formatting issues
+            json_content = json_content.replace('\n', ' ')
+            
+            # Simple approach: just double escape all backslashes in the entire JSON
+            json_content = json_content.replace('\\', '\\\\')
+            
+            # Fix double-escaped quotes
+            json_content = json_content.replace('\\\\"', '\\"')
+            
+            # Handle escaped quotes in code examples
+            try:
+                parsed_content = json.loads(json_content)
+            except json.JSONDecodeError as e:
+                return None, f"Invalid JSON format: {str(e)}"
+            
+            # Clean code based on language
+            if "template" in parsed_content:
+                # Convert \n sequences to actual newlines for all languages
+                parsed_content["template"] = parsed_content["template"].replace('\\n', '\n')
+                
+                if language.lower() == "javascript":
+                    parsed_content["template"] = clean_javascript_code(parsed_content["template"])
+            
+            if "answer" in parsed_content:
+                # Also handle newlines in answers if needed
+                parsed_content["answer"] = parsed_content["answer"].replace('\\n', '\n')
+                
+                # Don't apply underscore-to-comma conversion for Python answers
+                if language.lower() == "javascript":
+                    parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
+            
+            # Ensure fill-in-blank challenges have at least 2 blanks
+            if parsed_content.get("type") == "fill-in-blank":
+                template = parsed_content.get("template", "")
+                blank_count = template.count("_____")
+                
+                if blank_count < 2:
+                    # If there's only one blank, reject and generate a new challenge
+                    return None, "Generated challenge doesn't meet requirements. Please try again."
+                
+                # Ensure answer has commas for multiple blanks
+                answer = parsed_content.get("answer", "")
+                if blank_count > 1 and "," not in answer:
+                    # Try to split the answer into parts
+                    parts = answer.split()
+                    if len(parts) >= blank_count:
+                        parsed_content["answer"] = ", ".join(parts[:blank_count])
+            
+            # Additional length checks on individual fields
+            if "question" in parsed_content and len(parsed_content["question"]) > 500:
+                parsed_content["question"] = parsed_content["question"][:500] + "..."
+            if "answer" in parsed_content and len(parsed_content["answer"]) > 800:
+                parsed_content["answer"] = parsed_content["answer"][:800] + "..."
+            if "hint" in parsed_content and len(parsed_content["hint"]) > 250:
+                parsed_content["hint"] = parsed_content["hint"][:250] + "..."
+            if "explanation" in parsed_content and len(parsed_content["explanation"]) > 500:
+                parsed_content["explanation"] = parsed_content["explanation"][:500] + "..."
+                
+            return parsed_content, None
+        else:
+            return None, "Could not parse JSON from Amazon Q response"
+    except json.JSONDecodeError as e:
+        return None, f"Invalid JSON response from Amazon Q: {str(e)}"
+    except Exception as e:
+        return None, f"Error processing challenge: {str(e)}"
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
     return jsonify({"status": "ok", "message": "Code Quest Adventure backend is running"})
 
 @app.route('/api/story', methods=['GET'])
 def get_story():
-    """Get the initial story and game setup"""
     level = request.args.get('level', '1')
     
     prompt = f"""Generate a randomized short adventure story introduction for a coding game called "Code Quest Adventure" for level {level}.
@@ -151,34 +231,16 @@ def get_story():
     result = generate_with_amazon_q(prompt, max_tokens=300)
     
     if "error" in result:
-        print(f"Error from Amazon Q: {result['error']}")
         return jsonify({"error": "Failed to generate story content"}), 500
     
-    try:
-        # Try to parse the response as JSON
-        content = result["content"]
-        # Find JSON content between curly braces
-        json_start = content.find('{')
-        json_end = content.rfind('}') + 1
-        if json_start >= 0 and json_end > json_start:
-            json_content = content[json_start:json_end]
-            parsed_content = json.loads(json_content)
-            
-            # Additional length checks on individual fields
-            if "story" in parsed_content and len(parsed_content["story"]) > 800:
-                parsed_content["story"] = parsed_content["story"][:800] + "..."
-            if "objective" in parsed_content and len(parsed_content["objective"]) > 250:
-                parsed_content["objective"] = parsed_content["objective"][:250] + "..."
-                
-            return jsonify(parsed_content)
-        else:
-            return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+    parsed_content, error = create_story_json(result["content"])
+    if error:
+        return jsonify({"error": error}), 500
+    
+    return jsonify(parsed_content)
 
 @app.route('/api/challenge', methods=['GET'])
 def get_challenge():
-    """Get a coding challenge based on level"""
     level = request.args.get('level', '1')
     language = request.args.get('language', 'python')
     
@@ -222,104 +284,50 @@ def get_challenge():
     {language_specific_instructions}
     Format the response as JSON with the following structure:
     {{
-        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION"),
+        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION)",
         "type": "fill-in-blank OR multiple-choice",
-        "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only),
+        "code": "Source code that the question is about (required for all question types)",
+        "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only, EXACTLY 4 options),
         "template": "Code template with _____ for blanks" (for fill-in-blank only),
         "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
         "difficulty": "easy/medium/hard",
-        "xp_reward": number between 10-50
+        "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
     }}
     """
     
     result = generate_with_amazon_q(prompt, max_tokens=400)
     
     if "error" in result:
-        print(f"Error from Amazon Q: {result['error']}")
         return jsonify({"error": "Failed to generate challenge content"}), 500
     
-    try:
-        # Try to parse the response as JSON
-        content = result["content"]
-        # Find JSON content between curly braces
-        json_start = content.find('{')
-        json_end = content.rfind('}') + 1
-        if json_start >= 0 and json_end > json_start:
-            json_content = content[json_start:json_end]
-            
-            # Fix common JSON formatting issues
-            json_content = json_content.replace('\n', ' ')
-            
-            # Simple approach: just double escape all backslashes in the entire JSON
-            json_content = json_content.replace('\\', '\\\\')
-            
-            # Fix double-escaped quotes
-            json_content = json_content.replace('\\\\"', '\\"')
-            
-            # Handle escaped quotes in code examples
-            try:
-                parsed_content = json.loads(json_content)
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}")
-                print(f"Problematic JSON: {json_content}")
-                return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 500
-            
-            # Clean code based on language
-            if "template" in parsed_content:
-                # Convert \n sequences to actual newlines for all languages
-                parsed_content["template"] = parsed_content["template"].replace('\\n', '\n')
-                
-                if language.lower() == "javascript":
-                    parsed_content["template"] = clean_javascript_code(parsed_content["template"])
-            
-            if "answer" in parsed_content:
-                # Also handle newlines in answers if needed
-                parsed_content["answer"] = parsed_content["answer"].replace('\\n', '\n')
-                
-                # Don't apply underscore-to-comma conversion for Python answers
-                # This was causing the bug where variable names with underscores were being corrupted
-                if language.lower() == "javascript":
-                    parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
-            
-            # Ensure fill-in-blank challenges have at least 2 blanks
-            if parsed_content.get("type") == "fill-in-blank":
-                template = parsed_content.get("template", "")
-                blank_count = template.count("_____")
-                
-                if blank_count < 2:
-                    # If there's only one blank, reject and generate a new challenge
-                    return jsonify({"error": "Generated challenge doesn't meet requirements. Please try again."}), 500
-                
-                # Ensure answer has commas for multiple blanks
-                answer = parsed_content.get("answer", "")
-                if blank_count > 1 and "," not in answer:
-                    # Try to split the answer into parts
-                    parts = answer.split()
-                    if len(parts) >= blank_count:
-                        parsed_content["answer"] = ", ".join(parts[:blank_count])
-            
-            # Additional length checks on individual fields
-            if "question" in parsed_content and len(parsed_content["question"]) > 500:
-                parsed_content["question"] = parsed_content["question"][:500] + "..."
-            if "answer" in parsed_content and len(parsed_content["answer"]) > 800:
-                parsed_content["answer"] = parsed_content["answer"][:800] + "..."
-            if "hint" in parsed_content and len(parsed_content["hint"]) > 250:
-                parsed_content["hint"] = parsed_content["hint"][:250] + "..."
-            if "explanation" in parsed_content and len(parsed_content["explanation"]) > 500:
-                parsed_content["explanation"] = parsed_content["explanation"][:500] + "..."
-                
-            return jsonify(parsed_content)
+    parsed_content, error = create_challenge_json(result["content"], language)
+    if error:
+        return jsonify({"error": error}), 500
+    
+    # Ensure there are exactly 4 options for multiple-choice questions
+    if parsed_content.get("type") == "multiple-choice" and "options" in parsed_content:
+        options = parsed_content["options"]
+        if len(options) != 4:
+            if len(options) < 4:
+                # Add dummy options if less than 4
+                while len(options) < 4:
+                    options.append(f"Additional option {len(options) + 1}")
+            else:
+                # Truncate if more than 4
+                options = options[:4]
+            parsed_content["options"] = options
+    
+    # Ensure code field exists
+    if "code" not in parsed_content:
+        # If no code field, use template or create a placeholder
+        if "template" in parsed_content:
+            parsed_content["code"] = parsed_content["template"]
         else:
-            return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
-        print(f"Raw content: {result.get('content', 'No content')}")
-        return jsonify({"error": f"Invalid JSON response from Amazon Q: {str(e)}"}), 500
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return jsonify({"error": f"Error processing challenge: {str(e)}"}), 500
+            parsed_content["code"] = "// Code example will be shown here"
+    
+    return jsonify(parsed_content)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

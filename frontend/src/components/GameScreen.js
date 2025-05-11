@@ -143,6 +143,22 @@ const ChallengeQuestion = styled.div`
   color: rgb(237, 237, 237);
 `;
 
+const CodeDisplay = styled.pre`
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  background-color: #1e1e3f;
+  padding: 15px;
+  border-radius: 5px;
+  border-left: 4px solid #2196f3;
+  font-family: 'Courier New', monospace;
+  color: rgb(237, 237, 237);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+`;
+
 const AnswerContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -867,6 +883,13 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
             <ChallengeContainer>
               <ChallengeTitle>Coding Challenge</ChallengeTitle>
               <ChallengeQuestion>{challenge.question}</ChallengeQuestion>
+
+              {/* Display code for all question types */}
+              {challenge.code && (
+                <CodeDisplay>
+                  {challenge.code}
+                </CodeDisplay>
+              )}
 
               {nextChallengeLoading && (
                 <LoadingContainer>

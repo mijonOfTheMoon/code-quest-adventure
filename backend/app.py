@@ -301,19 +301,21 @@ def get_challenge():
     {language_specific_instructions}
     
     IMPORTANT INSTRUCTIONS FOR MULTIPLE-CHOICE QUESTIONS:
-    - If the multiple-choice question needs to include code, put the code in the "template" field
+    - ALWAYS include sample code in the "template" field for ALL multiple-choice questions
     - Do NOT include any blanks or fillable parts in the template for multiple-choice questions
     - Keep the code concise (maximum 10 lines)
     - Format the code properly with line breaks using \\n
     - Make sure the code is properly escaped for JSON
     - The question should clearly explain what the user needs to determine about the code
+    - ALWAYS provide EXACTLY 4 options (no more, no less)
+    - Make sure the options are distinct and reasonable
     
     Format the response as JSON with the following structure:
     {{
         "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION). DO NOT include code here for multiple-choice questions.",
         "type": "fill-in-blank OR multiple-choice",
-        "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only),
-        "template": "Code template with _____ for blanks (for fill-in-blank) OR complete code without blanks (for multiple-choice questions that need to show code)",
+        "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (EXACTLY 4 options for multiple-choice),
+        "template": "Code template with _____ for blanks (for fill-in-blank) OR complete code without blanks (REQUIRED for multiple-choice questions)",
         "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
@@ -386,56 +388,92 @@ def get_challenge():
                 if language.lower() == "javascript":
                     parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
             
-            # For multiple-choice questions, ensure code is in template if needed
+            # For multiple-choice questions, ensure code is in template and exactly 4 options
             if parsed_content.get("type") == "multiple-choice":
-                # Check if question contains code blocks (indicated by indentation, function definitions, etc.)
-                question = parsed_content.get("question", "")
-                
-                # More comprehensive list of code indicators
-                code_indicators = [
-                    "def ", "function ", "class ", "for ", "while ", "if ", "else ", "elif ", "return ",
-                    "var ", "let ", "const ", "import ", "from ", "public ", "private ", "static ",
-                    "int ", "float ", "string ", "boolean ", "void ", "=>", "->", "{", "}", "[]", "()",
-                    "    ", "\t", "```", "```python", "```javascript", "```java", "```c", "```cpp"
-                ]
-                
-                # Check for code blocks in triple backticks
-                code_block_pattern = re.search(r'```(?:\w+)?\n(.*?)\n```', question, re.DOTALL)
-                
-                has_code = any(indicator in question for indicator in code_indicators) or code_block_pattern
-                
-                # First check for code blocks in triple backticks
-                if code_block_pattern and "template" not in parsed_content:
-                    # Extract code from the code block
-                    code = code_block_pattern.group(1)
-                    # Remove the code block from the question
-                    question = re.sub(r'```(?:\w+)?\n.*?\n```', '', question, flags=re.DOTALL).strip()
-                    parsed_content["template"] = code
-                    parsed_content["question"] = question
-                
-                # Then check for inline code
-                elif has_code and "template" not in parsed_content:
-                    # Extract code from question and move it to template
-                    code_lines = []
-                    question_lines = []
-                    in_code_block = False
+                # Ensure there's a template for code
+                if "template" not in parsed_content or not parsed_content["template"]:
+                    # Check if question contains code blocks (indicated by indentation, function definitions, etc.)
+                    question = parsed_content.get("question", "")
                     
-                    # More sophisticated extraction
-                    for line in question.split('\n'):
-                        # Check if line starts a code block
-                        if line.strip().startswith('```'):
-                            in_code_block = not in_code_block
-                            continue
-                            
-                        # If we're in a code block or line has code indicators, add to code
-                        if in_code_block or any(line.strip().startswith(kw) for kw in ["def ", "function ", "class ", "for ", "while ", "if ", "else", "elif ", "return "]) or line.startswith("    ") or line.startswith("\t"):
-                            code_lines.append(line)
+                    # More comprehensive list of code indicators
+                    code_indicators = [
+                        "def ", "function ", "class ", "for ", "while ", "if ", "else ", "elif ", "return ",
+                        "var ", "let ", "const ", "import ", "from ", "public ", "private ", "static ",
+                        "int ", "float ", "string ", "boolean ", "void ", "=>", "->", "{", "}", "[]", "()",
+                        "    ", "\t", "```", "```python", "```javascript", "```java", "```c", "```cpp"
+                    ]
+                    
+                    # Check for code blocks in triple backticks
+                    code_block_pattern = re.search(r'```(?:\w+)?\n(.*?)\n```', question, re.DOTALL)
+                    
+                    has_code = any(indicator in question for indicator in code_indicators) or code_block_pattern
+                    
+                    # First check for code blocks in triple backticks
+                    if code_block_pattern:
+                        # Extract code from the code block
+                        code = code_block_pattern.group(1)
+                        # Remove the code block from the question
+                        question = re.sub(r'```(?:\w+)?\n.*?\n```', '', question, flags=re.DOTALL).strip()
+                        parsed_content["template"] = code
+                        parsed_content["question"] = question
+                    
+                    # Then check for inline code
+                    elif has_code:
+                        # Extract code from question and move it to template
+                        code_lines = []
+                        question_lines = []
+                        in_code_block = False
+                        
+                        # More sophisticated extraction
+                        for line in question.split('\n'):
+                            # Check if line starts a code block
+                            if line.strip().startswith('```'):
+                                in_code_block = not in_code_block
+                                continue
+                                
+                            # If we're in a code block or line has code indicators, add to code
+                            if in_code_block or any(line.strip().startswith(kw) for kw in ["def ", "function ", "class ", "for ", "while ", "if ", "else", "elif ", "return "]) or line.startswith("    ") or line.startswith("\t"):
+                                code_lines.append(line)
+                            else:
+                                question_lines.append(line)
+                        
+                        if code_lines:
+                            parsed_content["template"] = "\n".join(code_lines)
+                            parsed_content["question"] = "\n".join(question_lines).strip()
+                    else:
+                        # If no code found, create a simple example based on the language
+                        if language.lower() == "javascript":
+                            parsed_content["template"] = "function example() {\n  console.log('This is a sample code');\n  return true;\n}"
                         else:
-                            question_lines.append(line)
+                            parsed_content["template"] = "def example():\n    print('This is a sample code')\n    return True"
+                
+                # Ensure exactly 4 options
+                if "options" in parsed_content:
+                    options = parsed_content["options"]
                     
-                    if code_lines:
-                        parsed_content["template"] = "\n".join(code_lines)
-                        parsed_content["question"] = "\n".join(question_lines).strip()
+                    # If fewer than 4 options, add more
+                    while len(options) < 4:
+                        if language.lower() == "javascript":
+                            options.append(f"Additional option {len(options) + 1}")
+                        else:
+                            options.append(f"Additional option {len(options) + 1}")
+                    
+                    # If more than 4 options, trim to 4
+                    if len(options) > 4:
+                        # Keep the correct answer and 3 other options
+                        correct_answer = parsed_content.get("answer")
+                        if correct_answer in options:
+                            # Keep the correct answer and 3 other options
+                            correct_index = options.index(correct_answer)
+                            options = [options[i] for i in range(len(options)) if i == correct_index or i < 3]
+                            # If we still need more options (because correct answer was in first 3)
+                            while len(options) > 4:
+                                options.pop()
+                        else:
+                            # If correct answer not in options, just keep first 4
+                            options = options[:4]
+                    
+                    parsed_content["options"] = options
             
             # Ensure fill-in-blank challenges have at least 2 blanks
             if parsed_content.get("type") == "fill-in-blank":

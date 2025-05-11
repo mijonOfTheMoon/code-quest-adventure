@@ -4,6 +4,7 @@ import subprocess
 import json
 import os
 import re
+import time
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -24,7 +25,7 @@ def fix_json_string_escaping(json_str):
                      json_str, flags=re.DOTALL)
     
     # Fix unescaped quotes in strings
-    json_str = re.sub(r'(?<!")(".*?[^\\]")(?!")', r'\\\1', json_str)
+    json_str = re.sub(r'(?<!")(\".*?[^\\]")(?!")', r'\\\1', json_str)
     
     # Handle unescaped quotes in strings
     in_string = False
@@ -98,8 +99,8 @@ def generate_with_amazon_q(prompt, max_tokens=500):
         prompt: The prompt to send to Amazon Q
         max_tokens: Maximum number of tokens (roughly words) to generate
     """
-    # Add length limitation to the prompt
-    limited_prompt = f"{prompt}\n\nIMPORTANT: Keep your response concise and under {max_tokens} tokens. Focus on essential information only."
+    # Add length limitation to the prompt and emphasize JSON format
+    limited_prompt = f"{prompt}\n\nIMPORTANT: Keep your response concise and under {max_tokens} tokens. Focus on essential information only. RETURN ONLY VALID JSON WITHOUT ANY ADDITIONAL TEXT OR MARKDOWN FORMATTING. DO NOT USE SINGLE QUOTES IN JSON, USE DOUBLE QUOTES ONLY. ENSURE ALL SPECIAL CHARACTERS ARE PROPERLY ESCAPED."
     
     try:
         # Prepare the command to run Amazon Q CLI
@@ -109,14 +110,12 @@ def generate_with_amazon_q(prompt, max_tokens=500):
         result = subprocess.run(command, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
-            return {"error": "Amazon Q failed to generate content", "details": result.stderr}
+            return {"error": "Amazon Q failed to generate content"}
         
         content = result.stdout.strip()
         
         # Additional length check - truncate if still too long
         if len(content.split()) > max_tokens * 1.5:  # Using word count as rough approximation
-            print(f"Warning: Generated content exceeds length limit ({len(content.split())} words)")
-            # Truncate to avoid excessively long responses
             content_parts = content.split()
             content = " ".join(content_parts[:max_tokens]) + "..."
         
@@ -151,18 +150,45 @@ def get_story():
     result = generate_with_amazon_q(prompt, max_tokens=300)
     
     if "error" in result:
-        print(f"Error from Amazon Q: {result['error']}")
         return jsonify({"error": "Failed to generate story content"}), 500
     
     try:
         # Try to parse the response as JSON
         content = result["content"]
+        
         # Find JSON content between curly braces
         json_start = content.find('{')
         json_end = content.rfind('}') + 1
+        
         if json_start >= 0 and json_end > json_start:
             json_content = content[json_start:json_end]
-            parsed_content = json.loads(json_content)
+            
+            # Clean up the JSON content to handle common issues
+            # Remove any markdown code block markers
+            json_content = re.sub(r'```json|```', '', json_content)
+            
+            # Handle escaped quotes and newlines
+            json_content = json_content.replace('\\"', '"')
+            json_content = json_content.replace('\\n', ' ')
+            
+            # Fix common JSON formatting issues
+            # Replace single quotes with double quotes for JSON compatibility
+            json_content = re.sub(r"(?<![\\])\'", '"', json_content)
+            
+            # Fix unescaped control characters
+            json_content = re.sub(r'[\x00-\x1F\x7F]', '', json_content)
+            
+            # Fix trailing commas in arrays and objects
+            json_content = re.sub(r',\s*}', '}', json_content)
+            json_content = re.sub(r',\s*]', ']', json_content)
+            
+            try:
+                parsed_content = json.loads(json_content)
+            except json.JSONDecodeError:
+                # Try a more aggressive approach if the first attempt fails
+                # Strip all whitespace and try again
+                json_content = re.sub(r'\s+', ' ', json_content).strip()
+                parsed_content = json.loads(json_content)
             
             # Additional length checks on individual fields
             if "story" in parsed_content and len(parsed_content["story"]) > 800:
@@ -172,15 +198,48 @@ def get_story():
                 
             return jsonify(parsed_content)
         else:
-            return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
+            # Try to extract any JSON-like structure
+            # Look for title, story, and objective patterns
+            title_match = re.search(r'"title":\s*"([^"]+)"', content)
+            story_match = re.search(r'"story":\s*"([^"]+)"', content)
+            objective_match = re.search(r'"objective":\s*"([^"]+)"', content)
+            
+            if title_match and story_match and objective_match:
+                return jsonify({
+                    "title": title_match.group(1),
+                    "story": story_match.group(1),
+                    "objective": objective_match.group(1)
+                })
+            else:
+                return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
     except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+        # Try to extract any JSON-like structure as a last resort
+        try:
+            # Look for title, story, and objective patterns
+            title_match = re.search(r'"title":\s*"([^"]+)"', content)
+            story_match = re.search(r'"story":\s*"([^"]+)"', content)
+            objective_match = re.search(r'"objective":\s*"([^"]+)"', content)
+            
+            if title_match and story_match and objective_match:
+                return jsonify({
+                    "title": title_match.group(1),
+                    "story": story_match.group(1),
+                    "objective": objective_match.group(1)
+                })
+            else:
+                return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+        except:
+            return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+    except Exception:
+        return jsonify({"error": "Error processing story response"}), 500
 
 @app.route('/api/challenge', methods=['GET'])
 def get_challenge():
-    """Get a coding challenge based on level"""
+    """Get a coding challenge based on level and story objective"""
     level = request.args.get('level', '1')
     language = request.args.get('language', 'python')
+    objective = request.args.get('objective', '')
+    story_context = request.args.get('story_context', '')
     
     # Adjust prompt based on language to ensure proper formatting
     language_specific_instructions = ""
@@ -211,6 +270,24 @@ def get_challenge():
         8. NO COMMENTS AT ALL
         """
     
+    # Prepare context from objective and story if available
+    story_objective_context = ""
+    if objective or story_context:
+        # Sanitize and prepare the objective and story for inclusion in the prompt
+        sanitized_objective = objective.replace('"', "'").strip() if objective else ""
+        sanitized_story = story_context.replace('"', "'").strip() if story_context else ""
+        
+        story_objective_context = f"""
+        IMPORTANT: Create a challenge that relates to this story context and objective:
+        
+        Story: "{sanitized_story}"
+        Objective: "{sanitized_objective}"
+        
+        The challenge should feel connected to this narrative, either thematically or in the scenario described.
+        The question text should reference elements from the story or objective when possible.
+        For example, if the story mentions a spaceship, the challenge could involve calculating fuel for a spaceship.
+        """
+    
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
     Always generate new and unique value.
@@ -219,17 +296,26 @@ def get_challenge():
     DO NOT include any comments in the code (no # comments)
     DO NOT include any comments in the code (no // or /* */ comments)
     NO COMMENTS AT ALL
+    {story_objective_context}
     {language_specific_instructions}
+    
+    IMPORTANT INSTRUCTIONS FOR MULTIPLE-CHOICE QUESTIONS:
+    - If the multiple-choice question needs to include code, write the code directly in the "question" field
+    - Keep the code concise (maximum 15 lines)
+    - Format the code properly with line breaks using \\n
+    - Make sure the code is properly escaped for JSON
+    - The question should clearly explain what the user needs to determine about the code
+    
     Format the response as JSON with the following structure:
     {{
-        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION"),
+        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION). FOR MULTIPLE-CHOICE QUESTIONS THAT NEED CODE, INCLUDE THE CODE DIRECTLY HERE WITH PROPER FORMATTING.",
         "type": "fill-in-blank OR multiple-choice",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only),
         "template": "Code template with _____ for blanks" (for fill-in-blank only),
         "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
-        "difficulty": "easy/medium/hard",
+        "difficulty": "easy/medium/hard (easy for level 1, medium for level 2, hard for level 3)",
         "xp_reward": number between 10-50
     }}
     """
@@ -237,20 +323,34 @@ def get_challenge():
     result = generate_with_amazon_q(prompt, max_tokens=400)
     
     if "error" in result:
-        print(f"Error from Amazon Q: {result['error']}")
         return jsonify({"error": "Failed to generate challenge content"}), 500
     
     try:
         # Try to parse the response as JSON
         content = result["content"]
+        
         # Find JSON content between curly braces
         json_start = content.find('{')
         json_end = content.rfind('}') + 1
+        
         if json_start >= 0 and json_end > json_start:
             json_content = content[json_start:json_end]
             
+            # Remove any markdown code block markers
+            json_content = re.sub(r'```json|```', '', json_content)
+            
             # Fix common JSON formatting issues
             json_content = json_content.replace('\n', ' ')
+            
+            # Replace single quotes with double quotes for JSON compatibility
+            json_content = re.sub(r"(?<![\\])\'", '"', json_content)
+            
+            # Fix unescaped control characters
+            json_content = re.sub(r'[\x00-\x1F\x7F]', '', json_content)
+            
+            # Fix trailing commas in arrays and objects
+            json_content = re.sub(r',\s*}', '}', json_content)
+            json_content = re.sub(r',\s*]', ']', json_content)
             
             # Simple approach: just double escape all backslashes in the entire JSON
             json_content = json_content.replace('\\', '\\\\')
@@ -258,13 +358,15 @@ def get_challenge():
             # Fix double-escaped quotes
             json_content = json_content.replace('\\\\"', '\\"')
             
-            # Handle escaped quotes in code examples
             try:
                 parsed_content = json.loads(json_content)
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}")
-                print(f"Problematic JSON: {json_content}")
-                return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 500
+            except json.JSONDecodeError:
+                # Try a more aggressive approach if the first attempt fails
+                # Strip all whitespace and try again
+                json_content = re.sub(r'\s+', ' ', json_content).strip()
+                # Try with a different escaping approach
+                json_content = fix_json_string_escaping(json_content)
+                parsed_content = json.loads(json_content)
             
             # Clean code based on language
             if "template" in parsed_content:
@@ -279,7 +381,6 @@ def get_challenge():
                 parsed_content["answer"] = parsed_content["answer"].replace('\\n', '\n')
                 
                 # Don't apply underscore-to-comma conversion for Python answers
-                # This was causing the bug where variable names with underscores were being corrupted
                 if language.lower() == "javascript":
                     parsed_content["answer"] = clean_javascript_code(parsed_content["answer"])
             
@@ -289,8 +390,29 @@ def get_challenge():
                 blank_count = template.count("_____")
                 
                 if blank_count < 2:
-                    # If there's only one blank, reject and generate a new challenge
-                    return jsonify({"error": "Generated challenge doesn't meet requirements. Please try again."}), 500
+                    # If there's only one blank, add another blank
+                    if language.lower() == "javascript":
+                        # Add a second blank for JavaScript
+                        if "return" in template:
+                            parsed_content["template"] = template.replace("return ", "return _____ ")
+                            # Update answer to include both parts
+                            parsed_content["answer"] = f"{parsed_content.get('answer', '')}, "
+                        else:
+                            # Add a variable declaration with a blank
+                            parsed_content["template"] = f"var x = _____;\n{template}"
+                            # Update answer to include both parts
+                            parsed_content["answer"] = f"10, {parsed_content.get('answer', '')}"
+                    else:
+                        # Add a second blank for Python
+                        if "return" in template:
+                            parsed_content["template"] = template.replace("return ", "return _____ ")
+                            # Update answer to include both parts
+                            parsed_content["answer"] = f"{parsed_content.get('answer', '')}, "
+                        else:
+                            # Add a variable declaration with a blank
+                            parsed_content["template"] = f"x = _____\n{template}"
+                            # Update answer to include both parts
+                            parsed_content["answer"] = f"10, {parsed_content.get('answer', '')}"
                 
                 # Ensure answer has commas for multiple blanks
                 answer = parsed_content.get("answer", "")
@@ -312,14 +434,104 @@ def get_challenge():
                 
             return jsonify(parsed_content)
         else:
+            # Try to extract any JSON-like structure
+            # Look for question, type, and other required fields
+            question_match = re.search(r'"question":\s*"([^"]+)"', content)
+            type_match = re.search(r'"type":\s*"([^"]+)"', content)
+            
+            if question_match and type_match:
+                challenge_type = type_match.group(1).strip()
+                
+                if challenge_type == "multiple-choice":
+                    # Try to extract options and answer
+                    options_match = re.search(r'"options":\s*\[(.*?)\]', content, re.DOTALL)
+                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
+                    
+                    if options_match and answer_match:
+                        # Parse options from the matched string
+                        options_str = options_match.group(1)
+                        options = [opt.strip().strip('"\'') for opt in options_str.split(',')]
+                        
+                        return jsonify({
+                            "question": question_match.group(1),
+                            "type": "multiple-choice",
+                            "options": options,
+                            "answer": answer_match.group(1),
+                            "hint": "Think about the problem carefully.",
+                            "explanation": "This is the correct approach to solve the problem.",
+                            "difficulty": "medium",
+                            "xp_reward": 25
+                        })
+                elif challenge_type == "fill-in-blank":
+                    # Try to extract template and answer
+                    template_match = re.search(r'"template":\s*"([^"]+)"', content)
+                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
+                    
+                    if template_match and answer_match:
+                        return jsonify({
+                            "question": question_match.group(1),
+                            "type": "fill-in-blank",
+                            "template": template_match.group(1).replace('\\n', '\n'),
+                            "answer": answer_match.group(1),
+                            "hint": "Think about the problem carefully.",
+                            "explanation": "This is the correct approach to solve the problem.",
+                            "difficulty": "medium",
+                            "xp_reward": 25
+                        })
+            
             return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
-        print(f"Raw content: {result.get('content', 'No content')}")
-        return jsonify({"error": f"Invalid JSON response from Amazon Q: {str(e)}"}), 500
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return jsonify({"error": f"Error processing challenge: {str(e)}"}), 500
+    except json.JSONDecodeError:
+        # Try to extract any JSON-like structure as a last resort
+        try:
+            # Look for question, type, and other required fields
+            question_match = re.search(r'"question":\s*"([^"]+)"', content)
+            type_match = re.search(r'"type":\s*"([^"]+)"', content)
+            
+            if question_match and type_match:
+                challenge_type = type_match.group(1).strip()
+                
+                if challenge_type == "multiple-choice":
+                    # Try to extract options and answer
+                    options_match = re.search(r'"options":\s*\[(.*?)\]', content, re.DOTALL)
+                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
+                    
+                    if options_match and answer_match:
+                        # Parse options from the matched string
+                        options_str = options_match.group(1)
+                        options = [opt.strip().strip('"\'') for opt in options_str.split(',')]
+                        
+                        return jsonify({
+                            "question": question_match.group(1),
+                            "type": "multiple-choice",
+                            "options": options,
+                            "answer": answer_match.group(1),
+                            "hint": "Think about the problem carefully.",
+                            "explanation": "This is the correct approach to solve the problem.",
+                            "difficulty": "medium",
+                            "xp_reward": 25
+                        })
+                elif challenge_type == "fill-in-blank":
+                    # Try to extract template and answer
+                    template_match = re.search(r'"template":\s*"([^"]+)"', content)
+                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
+                    
+                    if template_match and answer_match:
+                        return jsonify({
+                            "question": question_match.group(1),
+                            "type": "fill-in-blank",
+                            "template": template_match.group(1).replace('\\n', '\n'),
+                            "answer": answer_match.group(1),
+                            "hint": "Think about the problem carefully.",
+                            "explanation": "This is the correct approach to solve the problem.",
+                            "difficulty": "medium",
+                            "xp_reward": 25
+                        })
+            
+            return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+        except:
+            return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
+    except Exception:
+        return jsonify({"error": "Error processing challenge"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

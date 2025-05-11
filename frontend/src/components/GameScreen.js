@@ -377,8 +377,12 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       // Hide story loading indicator
       setStoryLoading(false);
 
-      // Fetch challenge
-      const challengeResponse = await getChallenge(level, language);
+      // Extract objective and story text to pass to challenge generation
+      const objective = storyResponse?.objective || null;
+      const storyText = storyResponse?.story || null;
+
+      // Fetch challenge with the story objective and context
+      const challengeResponse = await getChallenge(level, language, objective, storyText);
       setChallenge(challengeResponse);
 
       // Reset state for new challenge
@@ -397,9 +401,9 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
         setBlankAnswers(new Array(blankCount).fill(''));
       }
 
-      // Start preloading more challenges in the background
+      // Start preloading more challenges in the background with the same objective and story
       if (!isPreloadingChallenges()) {
-        preloadChallenges(level, language, 3);
+        preloadChallenges(level, language, 3, objective, storyText);
       }
     } catch (err) {
       setError('Failed to load game content. Please try again.');
@@ -462,8 +466,12 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
         setBlankAnswers(new Array(blankCount).fill(''));
       }
 
-      // Start preloading challenges in the background
-      preloadChallenges(level, language, 3);
+      // Get objective and story from initialStory if available
+      const objective = initialStory?.objective || null;
+      const storyText = initialStory?.story || null;
+      
+      // Start preloading challenges in the background with story context
+      preloadChallenges(level, language, 3, objective, storyText);
 
       return;
     }
@@ -480,8 +488,12 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
 
         setLoadingProgress(50);
 
-        // Fetch challenge
-        const data = await getChallenge(level, language);
+        // Extract objective and story text to pass to challenge generation
+        const objective = storyData?.objective || null;
+        const storyText = storyData?.story || null;
+
+        // Fetch challenge with the story objective and context
+        const data = await getChallenge(level, language, objective, storyText);
         setChallenge(data);
 
         // Set template as initial value for fill-in-blank challenges
@@ -505,8 +517,8 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
             gameEngineRef.current.init();
           }
 
-          // Start preloading challenges in the background
-          preloadChallenges(level, language, 3);
+          // Start preloading challenges in the background with the same objective and story
+          preloadChallenges(level, language, 3, objective, storyText);
         }, 500);
       } catch (error) {
         setError('Failed to load challenge data. Please try again.');
@@ -550,13 +562,16 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       const currentLevel = levelOverride ||
         (gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel);
 
-      console.log(`Loading next challenge for level: ${currentLevel}`);
-      const nextChallenge = await getChallenge(currentLevel, language);
+      // Get the current story objective and text to pass to challenge generation
+      const objective = story?.objective || null;
+      const storyText = story?.story || null;
+
+      const nextChallenge = await getChallenge(currentLevel, language, objective, storyText);
       nextChallengeRef.current = nextChallenge;
 
       // Trigger another background preload if cache is getting low
       if (getCachedChallengeCount(currentLevel) < 1 && !isPreloadingChallenges()) {
-        preloadChallenges(currentLevel, language, 2);
+        preloadChallenges(currentLevel, language, 2, objective, storyText);
       }
     } catch (error) {
     } finally {
@@ -592,7 +607,12 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       // If no preloaded challenge, show loading state and fetch one
       setNextChallengeLoading(true);
       const currentLevel = gameEngineRef.current ? gameEngineRef.current.getCurrentLevel() : currentLevel;
-      getChallenge(currentLevel, language)
+      
+      // Get the current story objective and text to pass to challenge generation
+      const objective = story?.objective || null;
+      const storyText = story?.story || null;
+      
+      getChallenge(currentLevel, language, objective, storyText)
         .then(data => {
           setChallenge(data);
 

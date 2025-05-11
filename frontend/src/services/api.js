@@ -24,23 +24,33 @@ export const getStory = async (level) => {
   }
 };
 
-export const getChallenge = async (level, language) => {
+export const getChallenge = async (level, language, objective = null, story = null) => {
   try {
     // Ensure level is a number and within valid range
     const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
-    console.log(`Getting challenge for level: ${validLevel}`);
     
     // Check if we have a cached challenge for this level
     if (challengeCache.items[validLevel] && challengeCache.items[validLevel].length > 0) {
-      console.log(`Using cached challenge for level ${validLevel}`);
       return challengeCache.items[validLevel].shift();
     }
     
     // If no cached challenge, fetch one directly
-    const response = await axios.get(`${API_URL}/challenge`, {
-      params: { level: validLevel, language }
-    });
-    console.log(`Fetched new challenge for level ${validLevel}`);
+    const params = { 
+      level: validLevel, 
+      language 
+    };
+    
+    // Add objective to params if provided
+    if (objective) {
+      params.objective = objective;
+    }
+    
+    // Add story context to params if provided
+    if (story) {
+      params.story_context = story;
+    }
+    
+    const response = await axios.get(`${API_URL}/challenge`, { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching challenge:', error);
@@ -48,7 +58,7 @@ export const getChallenge = async (level, language) => {
   }
 };
 
-export const preloadChallenges = async (level, language, count = 6) => {
+export const preloadChallenges = async (level, language, count = 6, objective = null, story = null) => {
   // Don't start another preload if one is already in progress
   if (challengeCache.isLoading) return;
   
@@ -57,20 +67,25 @@ export const preloadChallenges = async (level, language, count = 6) => {
   try {
     // Ensure level is a number and within valid range
     const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
-    console.log(`Preloading ${count} challenges for level: ${validLevel}`);
     
     // Initialize the array for this level if it doesn't exist
     if (!challengeCache.items[validLevel]) {
       challengeCache.items[validLevel] = [];
     }
     
+    // Prepare params with objective and story if provided
+    const params = { level: validLevel, language };
+    if (objective) {
+      params.objective = objective;
+    }
+    if (story) {
+      params.story_context = story;
+    }
+    
     // Preload challenges one by one to avoid overwhelming the server
     for (let i = 0; i < count; i++) {
-      const response = await axios.get(`${API_URL}/challenge`, {
-        params: { level: validLevel, language }
-      });
+      const response = await axios.get(`${API_URL}/challenge`, { params });
       challengeCache.items[validLevel].push(response.data);
-      console.log(`Preloaded challenge ${i + 1}/${count} for level ${validLevel}`);
     }
   } catch (error) {
     console.error('Error preloading challenges:', error);

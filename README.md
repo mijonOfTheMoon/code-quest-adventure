@@ -22,7 +22,7 @@ Code Quest Adventure is an interactive game that combines storytelling with codi
 ## Prerequisites
 
 ```markdown
-- Node.js v18+ and npm for the frontend
+- Node.js v20+ and npm v10+ for the frontend
 - Python 3.6+ for the backend 
 - Amazon Q CLI installed and configured
 ```

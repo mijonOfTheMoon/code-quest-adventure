@@ -52,10 +52,15 @@ const FillInBlankContainer = styled.div`
   white-space: pre-wrap;
   line-height: 1.5;
   color: rgb(237, 237, 237);
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
 `;
 
 const TemplateText = styled.span`
   color: rgb(237, 237, 237);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
 `;
 
 const BlankInput = styled.input`
@@ -757,6 +762,17 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
     return `${Math.max(70, calculatedWidth)}px`;
   };
 
+  // Render code template without input fields (for multiple-choice questions)
+  const renderCodeTemplate = (template) => {
+    if (!template) return null;
+    
+    return (
+      <FillInBlankContainer>
+        <TemplateText>{template}</TemplateText>
+      </FillInBlankContainer>
+    );
+  };
+  
   // Render fill-in-blank template with input fields
   const renderFillInBlankTemplate = (template) => {
     if (!template) return null;
@@ -896,6 +912,11 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
               )}
 
               <AnswerContainer>
+                {/* Show code template if it exists for multiple-choice questions */}
+                {challenge.type === 'multiple-choice' && challenge.template && (
+                  renderCodeTemplate(challenge.template)
+                )}
+                
                 {challenge.type === 'multiple-choice' ? (
                   <div>
                     {challenge.options && challenge.options.map((option, index) => (

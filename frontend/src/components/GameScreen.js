@@ -703,7 +703,7 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
       const enemyDefeated = gameEngineRef.current.playerAttack();
 
       // Add points
-      gameEngineRef.current.addPoints(challenge.points_reward || playerConfig.pointsPerCorrectAnswer);
+      gameEngineRef.current.addPoints(challenge.xp_reward || playerConfig.pointsPerCorrectAnswer);
     } else {
       // Enemy attacks player
       const playerDefeated = gameEngineRef.current.enemyAttack();

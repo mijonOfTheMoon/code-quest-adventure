@@ -244,6 +244,20 @@ def get_challenge():
     level = request.args.get('level', '1')
     language = request.args.get('language', 'python')
     
+    # Determine question type based on level
+    question_type = "multiple-choice"  # Default
+    
+    # Level 1: Always multiple-choice
+    if level == '1':
+        question_type = "multiple-choice"
+    # Level 2: Always fill-in-blank
+    elif level == '2':
+        question_type = "fill-in-blank"
+    # Level 3: Randomized (50% multiple-choice, 50% fill-in-blank)
+    elif level == '3':
+        import random
+        question_type = random.choice(["multiple-choice", "fill-in-blank"])
+    
     # Adjust prompt based on language to ensure proper formatting
     language_specific_instructions = ""
     if language.lower() == "javascript":
@@ -276,8 +290,8 @@ def get_challenge():
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
     Always generate new and unique fresh question.
-    Randomize the first word of the chalenge.
-    The probability of multiple choice is 65%, and the fill in the blank is 35%.
+    Randomize the first word of the challenge.
+    The question type MUST be {question_type}.
     DO NOT include any comments in the code (no # comments)
     DO NOT include any comments in the code (no // or /* */ comments)
     NO COMMENTS AT ALL
@@ -285,7 +299,7 @@ def get_challenge():
     Format the response as JSON with the following structure:
     {{
         "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION)",
-        "type": "fill-in-blank OR multiple-choice",
+        "type": "{question_type}",
         "code": "Source code that the question is about (required for all question types)",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (for multiple-choice only, EXACTLY 4 options),
         "template": "Code template with _____ for blanks" (for fill-in-blank only),
@@ -293,7 +307,7 @@ def get_challenge():
         "hint": "A helpful hint (under 50 words)",
         "explanation": "Explanation of the solution (under 100 words)",
         "difficulty": "easy/medium/hard",
-        "points_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
+        "xp_reward": 10 for level 1, 20 for level 2, and 30 for level 3.
     }}
     """
     

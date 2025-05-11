@@ -10,7 +10,8 @@ import heroHitSpritesheet from '../assets/platformer/herochar sprites(new)/heroc
 import background from '../assets/platformer/tiles and background_foreground (new)/background.png';
 import attackEffect from '../assets/platformer/herochar sprites(new)/sword_effect_strip_4(new).png';
 import hitEffect from '../assets/platformer/herochar sprites(new)/hit_sparkle_anim_strip_4.png';
-import levelUpEffect from '../assets/platformer/miscellaneous sprites/orb_collected_anim_strip_5.png';
+// Points effect sprite
+import pointsEffect from '../assets/platformer/miscellaneous sprites/orb_collected_anim_strip_5.png';
 import grassProps from '../assets/platformer/miscellaneous sprites/grass_props.png';
 import flowersProps from '../assets/platformer/miscellaneous sprites/flowers_props.png';
 import bigFlowersProps from '../assets/platformer/miscellaneous sprites/bigflowers_props.png';
@@ -37,9 +38,8 @@ export default class GameEngine {
     this.damageText = null;
     this.levelText = null;
     this.currentLevel = 1;
-    this.xpPoints = playerConfig.baseXP;
-    this.xpText = null;
-    this.levelUpEffect = null;
+    this.points = playerConfig.basePoints; // Points counter
+    this.pointsText = null;
     this.gameScene = null;
     this.attackAnimationPlaying = false;
     this.enemiesDefeated = 0;
@@ -119,11 +119,6 @@ export default class GameEngine {
       frameHeight: 16
     });
 
-    this.gameScene.load.spritesheet('level_up', levelUpEffect, {
-      frameWidth: 16,
-      frameHeight: 16
-    });
-
     // Load environment props
     this.gameScene.load.image('grass', grassProps);
     this.gameScene.load.image('flowers', flowersProps);
@@ -168,7 +163,7 @@ export default class GameEngine {
     // Create health bars
     this.createHealthBars();
 
-    // Create level and XP text
+    // Create level and points text
     this.levelText = this.gameScene.add.text(20, 20, `Level: ${this.currentLevel}`, {
       fontSize: '24px',
       fill: '#fff',
@@ -177,7 +172,7 @@ export default class GameEngine {
       strokeThickness: 4
     });
 
-    this.xpText = this.gameScene.add.text(20, 50, `XP: ${this.xpPoints}`, {
+    this.pointsText = this.gameScene.add.text(20, 50, `Points: ${this.points}`, {
       fontSize: '18px',
       fill: '#fff',
       fontFamily: '"Press Start 2P", cursive',
@@ -339,14 +334,6 @@ export default class GameEngine {
     this.gameScene.anims.create({
       key: 'hit_effect',
       frames: this.gameScene.anims.generateFrameNumbers('hit_effect', { start: 0, end: 3 }),
-      frameRate: 10,
-      repeat: 0
-    });
-
-    // Level up effect animation
-    this.gameScene.anims.create({
-      key: 'level_up_effect',
-      frames: this.gameScene.anims.generateFrameNumbers('level_up', { start: 0, end: 4 }),
       frameRate: 10,
       repeat: 0
     });
@@ -717,13 +704,13 @@ export default class GameEngine {
         
         popupContainer.add(congratsText);
         
-        // Add XP display
-        const xpText = this.gameScene.add.text(0, 0, `XP: ${this.xpPoints}`, {
+        // Add Points display
+        const pointsText = this.gameScene.add.text(0, 0, `Points: ${this.points}`, {
           fontSize: '18px',
           fill: '#66ccff',
           fontFamily: '"Press Start 2P", cursive'
         }).setOrigin(0.5);
-        popupContainer.add(xpText);
+        popupContainer.add(pointsText);
         
         // Scale in animation for popup
         popupContainer.setScale(0.5);
@@ -849,13 +836,13 @@ export default class GameEngine {
         }).setOrigin(0.5);
         popupContainer.add(gameOverText);
         
-        // Add XP display
-        const xpText = this.gameScene.add.text(0, -20, `Final XP: ${this.xpPoints}`, {
+        // Add Points display
+        const pointsText = this.gameScene.add.text(0, -20, `Final Points: ${this.points}`, {
           fontSize: '18px',
           fill: '#66ccff',
           fontFamily: '"Press Start 2P", cursive'
         }).setOrigin(0.5);
-        popupContainer.add(xpText);
+        popupContainer.add(pointsText);
         
         // Add return to main screen button
         const returnButton = this.gameScene.add.text(0, 50, 'RETURN TO MAIN SCREEN', {
@@ -895,74 +882,39 @@ export default class GameEngine {
     return this.playerHealth <= 1;
   }
 
-  addXP(points) {
-    this.xpPoints += points;
-    this.xpText.setText(`XP: ${this.xpPoints}`);
-
-    // Check for level up (based on XP threshold)
-    const xpThreshold = playerConfig.xpToLevelUp;
-    if (this.xpPoints >= xpThreshold && this.currentLevel < 3) {
-      this.levelUp();
+  addPoints(points) {
+    // Simply add to the points counter
+    this.points += points;
+    
+    // Update the points text display
+    if (this.pointsText) {
+      this.pointsText.setText(`Points: ${this.points}`);
     }
+    
+    // Show a small animation to indicate points gained
+    this.showPointsGained(points);
   }
-
-  levelUp() {
-    // Increment level
-    this.currentLevel = Math.min(3, this.currentLevel + 1);
-    this.levelText.setText(`Level: ${this.currentLevel}`);
-
-    // Create level up effect sprite
-    const levelUpEffect = this.gameScene.physics.add.sprite(
-      this.player.x,
-      this.player.y,
-      'level_up'
-    );
-    levelUpEffect.setScale(6.0); // Make effect bigger
-    levelUpEffect.anims.play('level_up_effect', true);
-
-    // Update player health based on new level
-    this.playerMaxHealth = playerConfig.healthByLevel[this.currentLevel];
-    this.playerHealth = this.playerMaxHealth;
-
-    // Update health bar
-    this.updateHealthBars();
-
-    // Show level up text
-    const levelUpText = this.gameScene.add.text(this.player.x, this.player.y - 70, 'LEVEL UP!', {
-      fontSize: '28px',
-      fill: '#ffff00',
+  
+  showPointsGained(points) {
+    // Show points gained text
+    const pointsText = this.gameScene.add.text(this.player.x, this.player.y - 70, `+${points} Points!`, {
+      fontSize: '22px',
+      fill: '#66ccff',
       fontFamily: '"Press Start 2P", cursive',
       stroke: '#000',
-      strokeThickness: 4
+      strokeThickness: 3
     }).setOrigin(0.5);
 
-    // Animate level up text
+    // Animate points text
     this.gameScene.tweens.add({
-      targets: levelUpText,
-      y: this.player.y - 120,
+      targets: pointsText,
+      y: this.player.y - 100,
       alpha: 0,
-      scale: 1.5,
-      duration: 2500, // Slower animation
+      scale: 1.2,
+      duration: 1500,
       onComplete: () => {
-        levelUpText.destroy();
+        pointsText.destroy();
       }
-    });
-
-    // Clean up level up effect after animation completes
-    levelUpEffect.on('animationcomplete', () => {
-      levelUpEffect.destroy();
-
-      // Reset enemies defeated counter
-      this.enemiesDefeated = 0;
-
-      // Update enemy config for new level
-      this.currentEnemyConfig = enemyConfig[this.currentLevel];
-
-      // Create new enemy for the new level
-      this.createEnemy();
-      
-      // Update health bars for the new enemy
-      this.createHealthBars();
     });
   }
 
@@ -1000,7 +952,7 @@ export default class GameEngine {
     return this.enemiesDefeated;
   }
 
-  getEnemiesNeededToLevelUp() {
+  getEnemiesNeeded() {
     return gameProgressionConfig.enemiesToDefeat[this.currentLevel];
   }
 

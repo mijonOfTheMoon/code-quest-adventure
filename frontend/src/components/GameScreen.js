@@ -587,8 +587,8 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       // Player attacks enemy
       const enemyDefeated = gameEngineRef.current.playerAttack();
       
-      // Add XP points
-      gameEngineRef.current.addXP(challenge.xp_reward || 20);
+      // Add points
+      gameEngineRef.current.addPoints(challenge.points_reward || 20);
     } else {
       // Enemy attacks player
       const playerDefeated = gameEngineRef.current.enemyAttack();
@@ -611,7 +611,7 @@ const GameScreen = ({ story, initialChallenge = null, level = 1, language = 'pyt
       setTimeout(() => {
         // Only move to next challenge if enemy or player isn't defeated
         // (those cases are handled by the game engine popups)
-        if (gameEngineRef.current.enemyHealth > 1 && gameEngineRef.current.playerHealth > 1) {
+        if (gameEngineRef.current && gameEngineRef.current.enemyHealth > 1 && gameEngineRef.current.playerHealth > 1) {
           moveToNextChallenge();
         }
       }, 500);

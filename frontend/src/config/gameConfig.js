@@ -85,7 +85,7 @@ export const enemyConfig = {
 export const playerConfig = {
   // Initial player stats
   baseHealth: 100,
-  baseXP: 0,
+  basePoints: 0, // Starting points
   
   // Health per level
   healthByLevel: {
@@ -94,17 +94,14 @@ export const playerConfig = {
     3: 100  // 2 hits from boss enemy (damage 50)
   },
   
-  // XP required to level up
-  xpToLevelUp: 100,
+  // Points gained per correct answer
+  pointsPerCorrectAnswer: 25,
   
-  // XP gained per correct answer
-  xpPerCorrectAnswer: 25,
-  
-  // XP gained for defeating an enemy
-  xpPerEnemyDefeated: {
+  // Points gained for defeating an enemy
+  pointsPerEnemyDefeated: {
     1: 50,
     2: 75,
-    3: 150 // Boss gives more XP
+    3: 150 // Boss gives more points
   }
 };
 
@@ -112,19 +109,16 @@ export const playerConfig = {
  * Game progression configuration
  */
 export const gameProgressionConfig = {
-  // Number of enemies to defeat per level before progressing
+  // Number of enemies to defeat per level
   enemiesToDefeat: {
-    1: 1, // Defeat 1 small goblin to reach level 2
-    2: 1, // Defeat 1 large goblin to reach boss level
-    3: 1  // Defeat the boss to win the game
+    1: 1, // Defeat 1 small goblin in level 1
+    2: 1, // Defeat 1 large goblin in level 2
+    3: 1  // Defeat the boss in level 3
   },
   
   // Delay after answering before showing next question (ms)
   answerFeedbackDelay: 4000,
   
   // Delay after defeating an enemy before showing next enemy (ms)
-  enemyDefeatDelay: 2000,
-  
-  // Delay after leveling up before showing next enemy (ms)
-  levelUpDelay: 3000
+  enemyDefeatDelay: 2000
 };

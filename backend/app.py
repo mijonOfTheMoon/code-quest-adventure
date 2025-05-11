@@ -87,7 +87,7 @@ def clean_javascript_code(code):
 
 def generate_with_amazon_q(prompt, max_tokens=500):
     # Add length limitation to the prompt
-    limited_prompt = f"{prompt}\n\nIMPORTANT: Keep your response concise and under {max_tokens} tokens. Focus on essential information only."
+    limited_prompt = f"{prompt}\n\nIMPORTANT: Keep your response concise and under {max_tokens} tokens. Focus on essential information only. ENSURE ALL JSON IS VALID AND PROPERLY FORMATTED."
     
     try:
         # Prepare the command to run Amazon Q CLI
@@ -106,6 +106,17 @@ def generate_with_amazon_q(prompt, max_tokens=500):
             # Truncate to avoid excessively long responses
             content_parts = content.split()
             content = " ".join(content_parts[:max_tokens]) + "..."
+        
+        # Pre-process content to improve JSON formatting
+        # Find JSON content between curly braces
+        json_start = content.find('{')
+        json_end = content.rfind('}') + 1
+        if json_start >= 0 and json_end > json_start:
+            json_part = content[json_start:json_end]
+            # Ensure property names are quoted
+            json_part = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', json_part)
+            # Replace the JSON part in the content
+            content = content[:json_start] + json_part + content[json_end:]
         
         return {"content": content}
     except subprocess.TimeoutExpired:
@@ -145,17 +156,54 @@ def create_challenge_json(content, language):
             # Fix common JSON formatting issues
             json_content = json_content.replace('\n', ' ')
             
-            # Simple approach: just double escape all backslashes in the entire JSON
-            json_content = json_content.replace('\\', '\\\\')
+            # Clean up the JSON content before parsing
+            # Remove any markdown code block markers
+            json_content = re.sub(r'```json|```', '', json_content)
+            # Ensure property names are quoted
+            json_content = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', json_content)
+            # Fix missing commas between properties
+            json_content = re.sub(r'"\s*}\s*"', '", "', json_content)
+            # Fix unescaped quotes in strings
+            json_content = re.sub(r'(?<!")(".*?[^\\]")(?!")', r'\1', json_content)
             
-            # Fix double-escaped quotes
-            json_content = json_content.replace('\\\\"', '\\"')
-            
-            # Handle escaped quotes in code examples
-            try:
-                parsed_content = json.loads(json_content)
-            except json.JSONDecodeError as e:
-                return None, f"Invalid JSON format: {str(e)}"
+            # Try multiple parsing approaches to handle different JSON issues
+            for attempt_num, parsing_attempt in enumerate([
+                # Attempt 1: Try parsing the JSON as is
+                lambda c: json.loads(c),
+                
+                # Attempt 2: Fix escaping and try again
+                lambda c: json.loads(c.replace('\\', '\\\\').replace('\\\\"', '\\"')),
+                
+                # Attempt 3: Use regex to ensure property names are properly quoted
+                lambda c: json.loads(re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', c)),
+                
+                # Attempt 4: Combine approaches 2 and 3
+                lambda c: json.loads(re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', 
+                                           c.replace('\\', '\\\\').replace('\\\\"', '\\"'))),
+                
+                # Attempt 5: Fix missing commas between properties
+                lambda c: json.loads(re.sub(r'"\s*}\s*"', '", "', 
+                                           re.sub(r'"\s*{\s*"', '", "', 
+                                                 re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', 
+                                                       c.replace('\\', '\\\\').replace('\\\\"', '\\"'))))),
+                
+                # Attempt 6: Use a more aggressive approach to fix JSON
+                lambda c: json.loads(re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', 
+                                           c.replace('\\', '\\\\').replace('\\\\"', '\\"')
+                                            .replace("'", '"')))
+            ]):
+                try:
+                    parsed_content = parsing_attempt(json_content)
+                    print(f"Challenge parsing succeeded on attempt {attempt_num + 1}")
+                    break
+                except json.JSONDecodeError as e:
+                    if attempt_num == 5:  # Last attempt failed
+                        return None, f"Invalid JSON format: {str(e)}"
+                    continue
+                except Exception as e:
+                    if attempt_num == 5:  # Last attempt failed
+                        return None, f"Error parsing JSON: {str(e)}"
+                    continue
             
             # Clean code based on language
             if "template" in parsed_content:
@@ -256,8 +304,8 @@ def get_challenge():
     language = request.args.get('language', 'python')
     objective = request.args.get('objective')
     
-    # Try up to 3 times to generate a valid challenge
-    max_attempts = 3
+    # Try up to 5 times to generate a valid challenge
+    max_attempts = 5
     for attempt in range(max_attempts):
         try:
             # Determine question type based on level
@@ -314,7 +362,8 @@ def get_challenge():
             NO COMMENTS AT ALL.
             The challenge should relate to this objective: "{objective}".
             {language_specific_instructions}.
-            Format the response as JSON with the following structure:
+            
+            IMPORTANT: Format the response as VALID JSON with the following structure:
             {{
                 "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION)",
                 "type": "{question_type}",
@@ -323,8 +372,14 @@ def get_challenge():
                 "template": "Code template with _____ for blanks (ONLY for fill-in-blank questions)",
                 "answer": "The correct answer or solution (keep code solutions under 15 lines). For fill-in-blank with multiple blanks, separate the answers with commas and space (", ")",
                 "hint": "A helpful hint (under 50 words)",
-                "explanation": "Explanation of the solution (under 100 words)",
+                "explanation": "Explanation of the solution (under 100 words)"
             }}
+            
+            ENSURE ALL JSON PROPERTY NAMES ARE IN DOUBLE QUOTES.
+            ENSURE ALL STRING VALUES ARE IN DOUBLE QUOTES.
+            ENSURE PROPER COMMA USAGE BETWEEN PROPERTIES.
+            DO NOT USE SINGLE QUOTES FOR JSON PROPERTIES OR VALUES.
+            VERIFY YOUR JSON IS VALID BEFORE RETURNING IT.
             """
             
             result = generate_with_amazon_q(prompt, max_tokens=400)

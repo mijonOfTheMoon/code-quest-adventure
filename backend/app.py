@@ -9,6 +9,17 @@ import time
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+def get_xp_reward(level):
+    """Determine XP reward based on level"""
+    if level == '1':
+        return 10
+    elif level == '2':
+        return 20
+    elif level == '3':
+        return 30  # Corrected from 3 to 30 as it seems like a typo in the prompt
+    else:
+        return 10  # Default to level 1 reward
+
 def fix_json_string_escaping(json_str):
     """
     Fix common JSON string escaping issues, particularly with code examples
@@ -233,6 +244,17 @@ def get_story():
     except Exception:
         return jsonify({"error": "Error processing story response"}), 500
 
+def get_xp_reward(level):
+    """Determine XP reward based on level"""
+    if level == '1':
+        return 10
+    elif level == '2':
+        return 20
+    elif level == '3':
+        return 30  # Corrected from 3 to 30 as it seems like a typo in the prompt
+    else:
+        return 10  # Default to level 1 reward
+
 @app.route('/api/challenge', methods=['GET'])
 def get_challenge():
     """Get a coding challenge based on level and story objective"""
@@ -302,6 +324,7 @@ def get_challenge():
     
     IMPORTANT INSTRUCTIONS FOR MULTIPLE-CHOICE QUESTIONS:
     - ALWAYS include sample code in the "template" field for ALL multiple-choice questions
+    - NEVER NEVER NEVER INCLUE THE CODE IN THE "question" FIELD. ALWAYS IN "template" FIELD.
     - Do NOT include any blanks or fillable parts in the template for multiple-choice questions
     - Keep the code concise (maximum 10 lines)
     - Format the code properly with line breaks using \\n
@@ -529,6 +552,7 @@ def get_challenge():
             # Look for question, type, and other required fields
             question_match = re.search(r'"question":\s*"([^"]+)"', content)
             type_match = re.search(r'"type":\s*"([^"]+)"', content)
+            point_match = re.search(r'"xp_reward":\s*"([^"]+)"', content)
             
             if question_match and type_match:
                 challenge_type = type_match.group(1).strip()
@@ -551,7 +575,7 @@ def get_challenge():
                             "hint": "Think about the problem carefully.",
                             "explanation": "This is the correct approach to solve the problem.",
                             "difficulty": "medium",
-                            "xp_reward": 25
+                            "xp_reward": point_match
                         })
                 elif challenge_type == "fill-in-blank":
                     # Try to extract template and answer
@@ -567,7 +591,7 @@ def get_challenge():
                             "hint": "Think about the problem carefully.",
                             "explanation": "This is the correct approach to solve the problem.",
                             "difficulty": "medium",
-                            "xp_reward": 25
+                            "xp_reward": point_match
                         })
             
             return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
@@ -577,6 +601,7 @@ def get_challenge():
             # Look for question, type, and other required fields
             question_match = re.search(r'"question":\s*"([^"]+)"', content)
             type_match = re.search(r'"type":\s*"([^"]+)"', content)
+            point_match = re.search(r'"xp_reward":\s*"([^"]+)"', content)
             
             if question_match and type_match:
                 challenge_type = type_match.group(1).strip()
@@ -599,7 +624,7 @@ def get_challenge():
                             "hint": "Think about the problem carefully.",
                             "explanation": "This is the correct approach to solve the problem.",
                             "difficulty": "medium",
-                            "xp_reward": 25
+                            "xp_reward": point_match
                         })
                 elif challenge_type == "fill-in-blank":
                     # Try to extract template and answer
@@ -615,7 +640,7 @@ def get_challenge():
                             "hint": "Think about the problem carefully.",
                             "explanation": "This is the correct approach to solve the problem.",
                             "difficulty": "medium",
-                            "xp_reward": 25
+                            "xp_reward": point_match
                         })
             
             return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500

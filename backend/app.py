@@ -9,17 +9,6 @@ import time
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-def get_xp_reward(level):
-    """Determine XP reward based on level"""
-    if level == '1':
-        return 10
-    elif level == '2':
-        return 20
-    elif level == '3':
-        return 30  # Corrected from 3 to 30 as it seems like a typo in the prompt
-    else:
-        return 10  # Default to level 1 reward
-
 def fix_json_string_escaping(json_str):
     """
     Fix common JSON string escaping issues, particularly with code examples
@@ -208,21 +197,6 @@ def get_story():
                 parsed_content["objective"] = parsed_content["objective"][:250] + "..."
                 
             return jsonify(parsed_content)
-        else:
-            # Try to extract any JSON-like structure
-            # Look for title, story, and objective patterns
-            title_match = re.search(r'"title":\s*"([^"]+)"', content)
-            story_match = re.search(r'"story":\s*"([^"]+)"', content)
-            objective_match = re.search(r'"objective":\s*"([^"]+)"', content)
-            
-            if title_match and story_match and objective_match:
-                return jsonify({
-                    "title": title_match.group(1),
-                    "story": story_match.group(1),
-                    "objective": objective_match.group(1)
-                })
-            else:
-                return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
     except json.JSONDecodeError:
         # Try to extract any JSON-like structure as a last resort
         try:
@@ -243,17 +217,6 @@ def get_story():
             return jsonify({"error": "Invalid JSON response from Amazon Q"}), 500
     except Exception:
         return jsonify({"error": "Error processing story response"}), 500
-
-def get_xp_reward(level):
-    """Determine XP reward based on level"""
-    if level == '1':
-        return 10
-    elif level == '2':
-        return 20
-    elif level == '3':
-        return 30  # Corrected from 3 to 30 as it seems like a typo in the prompt
-    else:
-        return 10  # Default to level 1 reward
 
 @app.route('/api/challenge', methods=['GET'])
 def get_challenge():
@@ -335,7 +298,7 @@ def get_challenge():
     
     Format the response as JSON with the following structure:
     {{
-        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION). DO NOT include code here for multiple-choice questions.",
+        "question": "The question text (keep under 100 words and PLEASE MAKE A VERY CLEAR INSTRUCTION. CODE RELATED THE QUESTION MUST BE WRITTEN IN THE "template" field.)",
         "type": "fill-in-blank OR multiple-choice",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"] (EXACTLY 4 options for multiple-choice),
         "template": "Code template with _____ for blanks (for fill-in-blank) OR complete code without blanks (REQUIRED for multiple-choice questions)",
@@ -547,54 +510,6 @@ def get_challenge():
                 parsed_content["explanation"] = parsed_content["explanation"][:500] + "..."
                 
             return jsonify(parsed_content)
-        else:
-            # Try to extract any JSON-like structure
-            # Look for question, type, and other required fields
-            question_match = re.search(r'"question":\s*"([^"]+)"', content)
-            type_match = re.search(r'"type":\s*"([^"]+)"', content)
-            point_match = re.search(r'"xp_reward":\s*"([^"]+)"', content)
-            
-            if question_match and type_match:
-                challenge_type = type_match.group(1).strip()
-                
-                if challenge_type == "multiple-choice":
-                    # Try to extract options and answer
-                    options_match = re.search(r'"options":\s*\[(.*?)\]', content, re.DOTALL)
-                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
-                    
-                    if options_match and answer_match:
-                        # Parse options from the matched string
-                        options_str = options_match.group(1)
-                        options = [opt.strip().strip('"\'') for opt in options_str.split(',')]
-                        
-                        return jsonify({
-                            "question": question_match.group(1),
-                            "type": "multiple-choice",
-                            "options": options,
-                            "answer": answer_match.group(1),
-                            "hint": "Think about the problem carefully.",
-                            "explanation": "This is the correct approach to solve the problem.",
-                            "difficulty": "medium",
-                            "xp_reward": point_match
-                        })
-                elif challenge_type == "fill-in-blank":
-                    # Try to extract template and answer
-                    template_match = re.search(r'"template":\s*"([^"]+)"', content)
-                    answer_match = re.search(r'"answer":\s*"([^"]+)"', content)
-                    
-                    if template_match and answer_match:
-                        return jsonify({
-                            "question": question_match.group(1),
-                            "type": "fill-in-blank",
-                            "template": template_match.group(1).replace('\\n', '\n'),
-                            "answer": answer_match.group(1),
-                            "hint": "Think about the problem carefully.",
-                            "explanation": "This is the correct approach to solve the problem.",
-                            "difficulty": "medium",
-                            "xp_reward": point_match
-                        })
-            
-            return jsonify({"error": "Could not parse JSON from Amazon Q response"}), 500
     except json.JSONDecodeError:
         # Try to extract any JSON-like structure as a last resort
         try:

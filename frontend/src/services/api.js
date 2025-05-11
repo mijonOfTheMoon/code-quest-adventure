@@ -91,6 +91,29 @@ export const isPreloadingChallenges = () => {
   return challengeCache.isLoading;
 };
 
+/**
+ * Flushes all preloaded challenges for a specific level or all levels
+ * @param {number} level - Optional level to flush. If not provided, flushes all levels.
+ */
+export const flushPreloadedChallenges = (level = null) => {
+  console.log(`Flushing preloaded challenges${level ? ` for level ${level}` : ' for all levels'}`);
+  
+  if (level === null) {
+    // Flush all levels
+    Object.keys(challengeCache.items).forEach(lvl => {
+      challengeCache.items[lvl] = [];
+    });
+  } else {
+    // Ensure level is a number and within valid range
+    const validLevel = Math.min(Math.max(parseInt(level) || 1, 1), 3);
+    
+    // Flush only the specified level
+    if (challengeCache.items[validLevel]) {
+      challengeCache.items[validLevel] = [];
+    }
+  }
+};
+
 export const submitAnswer = async (answer, correct_answer, question) => {
   try {
     const response = await axios.post(`${API_URL}/feedback`, {

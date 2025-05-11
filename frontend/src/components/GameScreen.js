@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import GameEngine from '../game/GameEngine';
 import { playerConfig, gameProgressionConfig } from '../config/gameConfig';
-import { getStory, getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges } from '../services/api';
+import { getStory, getChallenge, submitAnswer, preloadChallenges, getCachedChallengeCount, isPreloadingChallenges, flushPreloadedChallenges } from '../services/api';
 import LoadingScreen from './LoadingScreen';
 
 const Container = styled.div`
@@ -431,7 +431,12 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
   // Listen for stage level change events
   useEffect(() => {
     const handleLevelChange = (event) => {
-      setCurrentLevel(event.detail.level);
+      const newLevel = event.detail.level;
+      setCurrentLevel(newLevel);
+
+      // Flush preloaded challenges for previous level
+      flushPreloadedChallenges();
+      console.log('Flushed preloaded questions when continuing to next level');
 
       // Show loading animations for both story and challenge
       setStoryLoading(true);

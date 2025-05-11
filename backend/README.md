@@ -105,6 +105,7 @@ The API will be available at [http://localhost:5000](http://localhost:5000).
   "difficulty": "medium",
   "xp_reward": 20
 }
+```
 
 ## How It Works
 

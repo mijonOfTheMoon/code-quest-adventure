@@ -17,11 +17,11 @@ Code Quest Adventure is an interactive game that combines storytelling with codi
 ## Project Structure
 
 - **Frontend**: React-based user interface
-- **Backend**: Flask API that interfaces with Amazon Q CLI
+- **Backend**: Flask API that integrated with Amazon Q Developer CLI
 
-```markdown
 ## Prerequisites
 
+```markdown
 - Node.js v20+ and npm for the frontend
 - Python 3.6+ for the backend 
 - Amazon Q CLI installed and configured

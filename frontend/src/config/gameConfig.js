@@ -53,7 +53,7 @@ export const enemyConfig = {
       attack: { frameStart: 0, frameEnd: 3, frameRate: 8 },
       hit: { frameStart: 0, frameEnd: 2, frameRate: 8 }
     },
-    scale: 5.5,
+    scale: 8.0,
     tint: 0x99CCFF // Blue tint
   },
   
@@ -74,7 +74,7 @@ export const enemyConfig = {
       attack: { frameStart: 0, frameEnd: 5, frameRate: 8 },
       hit: { frameStart: 0, frameEnd: 2, frameRate: 8 }
     },
-    scale: 7.0, // Larger for boss
+    scale: 12.0, // Larger for boss
     tint: 0xFF6666 // Red tint for boss
   }
 };

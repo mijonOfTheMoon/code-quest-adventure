@@ -160,7 +160,7 @@ const CodeEditor = styled.textarea`
   border: 1px solid #333;
   border-radius: 5px;
   resize: none;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 `;
 
 const OptionButton = styled.button`

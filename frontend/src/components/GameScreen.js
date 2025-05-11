@@ -862,13 +862,6 @@ const GameScreen = ({ story: initialStory = null, initialChallenge = null, level
                   <p><strong>Hint:</strong> {challenge.hint}</p>
                 </HintContent>
               )}
-
-              {/* Show hint from feedback here instead of in the popup */}
-              {feedback && !feedback.is_correct && feedback.next_hint && showHint && (
-                <HintContent visible={true}>
-                  <p><strong>Additional Hint:</strong> {feedback.next_hint}</p>
-                </HintContent>
-              )}
             </StoryContainer>
 
             <ChallengeContainer>

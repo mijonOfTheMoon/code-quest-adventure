@@ -131,7 +131,6 @@ export default class GameEngine {
     this.gameScene.load.image('big_flowers', bigFlowersProps);
     this.gameScene.load.image('roots', rootProps);
     this.gameScene.load.image('dry_grass', dryGrassProps);
-
     this.gameScene.load.image('background', background);
   }
 

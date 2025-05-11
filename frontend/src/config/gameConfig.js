@@ -33,7 +33,6 @@ export const enemyConfig = {
       hit: { frameStart: 0, frameEnd: 2, frameRate: 8 }
     },
     scale: 3.5,
-    tint: 0xFFFFFF // No tint for level 1
   },
   
   // Level 2: Large Goblin
@@ -54,7 +53,6 @@ export const enemyConfig = {
       hit: { frameStart: 0, frameEnd: 2, frameRate: 8 }
     },
     scale: 8.0,
-    tint: 0x99CCFF // Blue tint
   },
   
   // Level 3: Boss - Bomber Goblin
@@ -75,7 +73,6 @@ export const enemyConfig = {
       hit: { frameStart: 0, frameEnd: 2, frameRate: 8 }
     },
     scale: 12.0, // Larger for boss
-    tint: 0xFF6666 // Red tint for boss
   }
 };
 

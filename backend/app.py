@@ -138,7 +138,7 @@ def get_story():
     prompt = f"""Generate a randomized short adventure story introduction for a coding game called "Code Quest Adventure" for level {level}.
     The story should be exciting and set up a scenario where the player needs to solve coding challenges.
     Always generate new and unique value. The title should be 3 random cheesy words. You must include the level on the title.
-    You must randomize the starting letter alphabet.
+    You must randomize the starting word.
     Format the response as JSON with the following structure:
     {{
         "title": "Level {level} title",
@@ -256,6 +256,7 @@ def get_challenge():
         8. Do not use backslashes at the end of lines
         9. For fill-in-blank challenges, ALWAYS include at least 2 blanks in the template
         10. For fill-in-blank challenges with multiple blanks, separate the answers with commas and space (", ")
+        11. NO COMMENTS AT ALL
         """
     else:
         language_specific_instructions = """
@@ -291,7 +292,7 @@ def get_challenge():
     prompt = f"""Generate a coding challenge for level {level} in {language} for a game called "Code Quest Adventure".
     Make it appropriate for beginners but challenging.
     Always generate new and unique value.
-    Randomize the first alphabet of the chalenge.
+    Randomize the first word of the chalenge.
     The probability of multiple choice is 65%, and the fill in the blank is 35%.
     DO NOT include any comments in the code (no # comments)
     DO NOT include any comments in the code (no // or /* */ comments)

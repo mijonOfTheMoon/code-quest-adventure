@@ -9,7 +9,8 @@ const challengeCache = {
     2: [],
     3: []
   },
-  isLoading: false
+  isLoading: false,
+  activeRequests: [] // Array to track active request cancel tokens
 };
 
 export const getStory = async (level) => {
@@ -37,14 +38,33 @@ export const getChallenge = async (level, language) => {
     }
     
     // If no cached challenge, fetch one directly
+    // Create a cancel token for this request
+    const cancelTokenSource = axios.CancelToken.source();
+    
+    // Add this token to our active requests array
+    challengeCache.activeRequests.push(cancelTokenSource);
+    
     const response = await axios.get(`${API_URL}/challenge`, {
-      params: { level: validLevel, language }
+      params: { level: validLevel, language },
+      cancelToken: cancelTokenSource.token
     });
+    
+    // Remove this token from active requests once completed
+    const index = challengeCache.activeRequests.indexOf(cancelTokenSource);
+    if (index > -1) {
+      challengeCache.activeRequests.splice(index, 1);
+    }
+    
     console.log(`Fetched new challenge for level ${validLevel}`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching challenge:', error);
-    throw error;
+    if (axios.isCancel(error)) {
+      console.log('Challenge request was cancelled');
+      throw new Error('Challenge request was cancelled');
+    } else {
+      console.error('Error fetching challenge:', error);
+      throw error;
+    }
   }
 };
 
@@ -66,14 +86,34 @@ export const preloadChallenges = async (level, language, count = 6) => {
     
     // Preload challenges one by one to avoid overwhelming the server
     for (let i = 0; i < count; i++) {
-      const response = await axios.get(`${API_URL}/challenge`, {
-        params: { level: validLevel, language }
-      });
-      challengeCache.items[validLevel].push(response.data);
-      console.log(`Preloaded challenge ${i + 1}/${count} for level ${validLevel}`);
+      // Create a cancel token for this request
+      const cancelTokenSource = axios.CancelToken.source();
+      
+      // Add this token to our active requests array
+      challengeCache.activeRequests.push(cancelTokenSource);
+      
+      try {
+        const response = await axios.get(`${API_URL}/challenge`, {
+          params: { level: validLevel, language },
+          cancelToken: cancelTokenSource.token
+        });
+        
+        challengeCache.items[validLevel].push(response.data);
+        console.log(`Preloaded challenge ${i + 1}/${count} for level ${validLevel}`);
+      } finally {
+        // Remove this token from active requests once completed or failed
+        const index = challengeCache.activeRequests.indexOf(cancelTokenSource);
+        if (index > -1) {
+          challengeCache.activeRequests.splice(index, 1);
+        }
+      }
     }
   } catch (error) {
-    console.error('Error preloading challenges:', error);
+    if (axios.isCancel(error)) {
+      console.log('Preload request was cancelled');
+    } else {
+      console.error('Error preloading challenges:', error);
+    }
   } finally {
     challengeCache.isLoading = false;
   }
@@ -92,11 +132,33 @@ export const isPreloadingChallenges = () => {
 };
 
 /**
+ * Cancels all ongoing challenge API requests
+ */
+export const cancelAllChallengeRequests = () => {
+  console.log(`Cancelling ${challengeCache.activeRequests.length} active challenge requests`);
+  
+  // Cancel each request in the active requests array
+  challengeCache.activeRequests.forEach(cancelTokenSource => {
+    try {
+      cancelTokenSource.cancel('Operation cancelled due to flush request');
+    } catch (error) {
+      console.error('Error cancelling request:', error);
+    }
+  });
+  
+  // Clear the active requests array
+  challengeCache.activeRequests = [];
+};
+
+/**
  * Flushes all preloaded challenges for a specific level or all levels
  * @param {number} level - Optional level to flush. If not provided, flushes all levels.
  */
 export const flushPreloadedChallenges = (level = null) => {
   console.log(`Flushing preloaded challenges${level ? ` for level ${level}` : ' for all levels'}`);
+  
+  // First, cancel all ongoing challenge API requests
+  cancelAllChallengeRequests();
   
   if (level === null) {
     // Flush all levels
